@@ -35,7 +35,7 @@ interface RegistrationFormProps {
   heroImage?: string;
 }
 
-export default function RegistrationForm({ heroImage }: RegistrationFormProps) {
+export default function RegistrationForm({ heroImage = "/freefire-bg.jpg" }: RegistrationFormProps) {
   const { toast } = useToast();
   const [submittedData, setSubmittedData] = useState<any | null>(null);
 
@@ -80,7 +80,7 @@ export default function RegistrationForm({ heroImage }: RegistrationFormProps) {
 
   if (submittedData) {
     return (
-      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6">
         <div className="max-w-2xl w-full space-y-8">
           <div className="text-center space-y-6">
             <div className="flex justify-center">
@@ -159,27 +159,29 @@ export default function RegistrationForm({ heroImage }: RegistrationFormProps) {
   }
 
   return (
-    <div className="min-h-screen bg-background">
-      {heroImage && (
-        <div className="relative h-64 md:h-80 w-full overflow-hidden">
-          <img
-            src={heroImage}
-            alt="Event venue"
-            className="w-full h-full object-cover"
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/60 via-black/40 to-black/70" />
-          <div className="absolute inset-0 flex items-center justify-center">
-            <div className="text-center space-y-4 px-6">
-              <h1 className="text-4xl md:text-5xl font-bold text-white">Event Registration</h1>
-              <p className="text-lg md:text-xl text-white/90 max-w-2xl">
-                Register now to receive your secure QR-based entry pass
-              </p>
-            </div>
+    <div className="min-h-screen relative">
+      {/* Full-screen background image */}
+      <div className="fixed inset-0 z-0">
+        <img
+          src={heroImage}
+          alt="Free Fire Tournament"
+          className="w-full h-full object-cover"
+        />
+        <div className="absolute inset-0 bg-black/60" />
+      </div>
+      
+      {/* Content overlay */}
+      <div className="relative z-10">
+        <div className="relative py-12">
+          <div className="text-center space-y-4 px-6 mb-8">
+            <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">Event Registration</h1>
+            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto drop-shadow-md">
+              Register now to receive your secure QR-based entry pass
+            </p>
           </div>
         </div>
-      )}
 
-      <div className="max-w-4xl mx-auto px-6 py-12 space-y-8">
+      <div className="max-w-4xl mx-auto px-6 pb-12 space-y-8">
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
           <Card>
             <CardContent className="pt-6 text-center space-y-2">
@@ -347,6 +349,7 @@ export default function RegistrationForm({ heroImage }: RegistrationFormProps) {
             </Form>
           </CardContent>
         </Card>
+        </div>
       </div>
     </div>
   );

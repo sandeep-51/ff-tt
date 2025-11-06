@@ -66,7 +66,7 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
   };
 
   return (
-    <div className="min-h-screen bg-background flex items-center justify-center p-6">
+    <div className="min-h-screen flex items-center justify-center p-6">
       <div className="max-w-md w-full space-y-8">
         <div className="text-center space-y-4">
           <div className="flex justify-center">
@@ -78,6 +78,15 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
             <h1 className="text-4xl font-bold">Admin Dashboard</h1>
             <p className="text-muted-foreground">
               Sign in to manage event registrations and QR codes
+            </p>
+          </div>
+          
+          {/* Admin credentials note */}
+          <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm">
+            <p className="font-semibold mb-1">Default Admin Credentials:</p>
+            <p className="text-muted-foreground font-mono">Password: admin123</p>
+            <p className="text-xs text-muted-foreground mt-2">
+              (Change this in production via environment variables)
             </p>
           </div>
         </div>
