@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Globe, GlobeOff, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Globe, EyeOff, Trash2, Loader2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import FormBuilder from "./FormBuilder";
@@ -176,7 +176,7 @@ export default function FormsList() {
                         disabled={unpublishMutation.isPending}
                         data-testid={`button-unpublish-${form.id}`}
                       >
-                        <GlobeOff className="h-4 w-4" />
+                        <EyeOff className="h-4 w-4" />
                       </Button>
                     ) : (
                       <Button
