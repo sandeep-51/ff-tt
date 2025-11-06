@@ -41,16 +41,44 @@ export class SqliteStorage implements IStorage {
   }
 
   async getRegistrationsByFormId(formId: number): Promise<Registration[]> {
-    return this.db.getRegistrationsByFormId(formId);
+    const stmt = db.prepare(`
+      SELECT * FROM registrations 
+      WHERE formId = ? OR formId IS NULL
+      ORDER BY createdAt DESC
+    `);
+    const rows = stmt.all(formId);
+    return rows.map((row: any) => ({
+      id: row.id,
+      name: row.name,
+      email: row.email,
+      phone: row.phone,
+      organization: row.organization,
+      groupSize: row.groupSize,
+      scans: row.scans,
+      maxScans: row.maxScans,
+      hasQR: row.hasQR === 1,
+      qrCodeData: row.qrCodeData,
+      status: row.status as Registration["status"],
+      createdAt: row.createdAt,
+    }));
   }
 
   async getFormStats(formId: number) {
-    const registrations = await this.getRegistrationsByFormId(formId);
+    const stmt = db.prepare(`
+      SELECT 
+        COUNT(*) as totalRegistrations,
+        SUM(CASE WHEN hasQR = 1 THEN 1 ELSE 0 END) as qrCodesGenerated,
+        SUM(scans) as totalEntries,
+        SUM(CASE WHEN status = 'active' OR status = 'checked-in' THEN 1 ELSE 0 END) as activeRegistrations
+      FROM registrations
+      WHERE formId = ? OR formId IS NULL
+    `);
+    const result = stmt.get(formId) as any;
     return {
-      totalRegistrations: registrations.length,
-      qrCodesGenerated: registrations.filter(r => r.hasQR).length,
-      totalEntries: registrations.reduce((sum, r) => sum + r.scans, 0),
-      activeRegistrations: registrations.filter(r => r.status === "active" || r.status === "checked-in").length,
+      totalRegistrations: result?.totalRegistrations || 0,
+      qrCodesGenerated: result?.qrCodesGenerated || 0,
+      totalEntries: result?.totalEntries || 0,
+      activeRegistrations: result?.activeRegistrations || 0,
     };
   }
 
