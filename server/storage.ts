@@ -13,8 +13,14 @@ export interface IStorage {
     totalEntries: number;
     activeRegistrations: number;
   }>;
-  getFormSettings(): Promise<any>;
-  updateFormSettings(settings: any): Promise<boolean>;
+  createEventForm(data: any): Promise<any>;
+  getEventForm(id: number): Promise<any>;
+  getPublishedForm(): Promise<any>;
+  getAllEventForms(): Promise<any[]>;
+  updateEventForm(id: number, data: any): Promise<boolean>;
+  publishEventForm(id: number): Promise<boolean>;
+  unpublishEventForm(id: number): Promise<boolean>;
+  deleteEventForm(id: number): Promise<boolean>;
 }
 
 export class SqliteStorage implements IStorage {
@@ -42,12 +48,36 @@ export class SqliteStorage implements IStorage {
     return ticketDb.getStats();
   }
 
-  async getFormSettings() {
-    return ticketDb.getFormSettings();
+  async createEventForm(data: any) {
+    return ticketDb.createEventForm(data);
   }
 
-  async updateFormSettings(settings: any) {
-    return ticketDb.updateFormSettings(settings);
+  async getEventForm(id: number) {
+    return ticketDb.getEventForm(id);
+  }
+
+  async getPublishedForm() {
+    return ticketDb.getPublishedForm();
+  }
+
+  async getAllEventForms() {
+    return ticketDb.getAllEventForms();
+  }
+
+  async updateEventForm(id: number, data: any) {
+    return ticketDb.updateEventForm(id, data);
+  }
+
+  async publishEventForm(id: number) {
+    return ticketDb.publishEventForm(id);
+  }
+
+  async unpublishEventForm(id: number) {
+    return ticketDb.unpublishEventForm(id);
+  }
+
+  async deleteEventForm(id: number) {
+    return ticketDb.deleteEventForm(id);
   }
 }
 

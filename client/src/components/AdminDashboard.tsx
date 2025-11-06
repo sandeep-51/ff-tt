@@ -9,6 +9,7 @@ import RegistrationsTable, { type Registration } from "./RegistrationsTable";
 import QRGenerator from "./QRGenerator";
 import QRScanner from "./QRScanner";
 import ExportData from "./ExportData";
+import FormsList from "./FormsList";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -16,7 +17,7 @@ interface AdminDashboardProps {
 
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const { toast } = useToast();
-  const [activeTab, setActiveTab] = useState("registrations");
+  const [activeTab, setActiveTab] = useState("forms");
 
   // Fetch all registrations
   const { data: registrations = [], refetch } = useQuery<Registration[]>({
@@ -178,7 +179,10 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
 
       <main className="max-w-7xl mx-auto px-6 py-8">
         <Tabs value={activeTab} onValueChange={setActiveTab}>
-          <TabsList className="grid w-full max-w-2xl grid-cols-4 mb-8">
+          <TabsList className="grid w-full max-w-3xl grid-cols-5 mb-8">
+            <TabsTrigger value="forms" data-testid="tab-forms">
+              Forms
+            </TabsTrigger>
             <TabsTrigger value="registrations" data-testid="tab-registrations">
               Registrations
             </TabsTrigger>
@@ -192,6 +196,10 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
               Export
             </TabsTrigger>
           </TabsList>
+
+          <TabsContent value="forms">
+            <FormsList />
+          </TabsContent>
 
           <TabsContent value="registrations">
             <RegistrationsTable

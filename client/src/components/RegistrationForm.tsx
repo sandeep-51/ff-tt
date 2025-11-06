@@ -2,7 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
-import { useMutation } from "@tanstack/react-query";
+import { useMutation, useQuery } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -15,9 +15,10 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users, Loader2 } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import type { EventForm } from "@shared/schema";
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -32,12 +33,19 @@ const registrationSchema = z.object({
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
 interface RegistrationFormProps {
-  heroImage?: string;
+  publishedForm: EventForm | null;
 }
 
-export default function RegistrationForm({ heroImage = "/freefire-bg.jpg" }: RegistrationFormProps) {
+export default function RegistrationForm({ publishedForm }: RegistrationFormProps) {
   const { toast } = useToast();
   const [submittedData, setSubmittedData] = useState<any | null>(null);
+
+  const title = publishedForm?.title || "Event Registration";
+  const subtitle = publishedForm?.subtitle || "Register now to receive your secure QR-based entry pass";
+  const heroImage = publishedForm?.heroImageUrl;
+  const watermarkUrl = publishedForm?.watermarkUrl;
+  const logoUrl = publishedForm?.logoUrl;
+  const customLinks = publishedForm?.customLinks || [];
 
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -161,23 +169,35 @@ export default function RegistrationForm({ heroImage = "/freefire-bg.jpg" }: Reg
   return (
     <div className="min-h-screen relative">
       {/* Full-screen background image */}
-      <div className="fixed inset-0 z-0">
-        <img
-          src={heroImage}
-          alt="Free Fire Tournament"
-          className="w-full h-full object-cover"
-        />
-        <div className="absolute inset-0 bg-black/60" />
-      </div>
+      {heroImage && (
+        <div className="fixed inset-0 z-0">
+          <img
+            src={heroImage}
+            alt={title}
+            className="w-full h-full object-cover"
+          />
+          <div className="absolute inset-0 bg-black/60" />
+        </div>
+      )}
 
       {/* Content overlay */}
       <div className="relative z-10">
         <div className="relative py-12">
           <div className="text-center space-y-4 px-6 mb-8">
-            <h1 className="text-4xl md:text-5xl font-bold text-white drop-shadow-lg">Event Registration</h1>
-            <p className="text-lg md:text-xl text-white/90 max-w-2xl mx-auto drop-shadow-md">
-              Register now to receive your secure QR-based entry pass
+            {logoUrl && (
+              <div className="flex justify-center mb-6">
+                <img src={logoUrl} alt="Logo" className="h-16 w-auto" />
+              </div>
+            )}
+            <h1 className={`text-4xl md:text-5xl font-bold drop-shadow-lg ${heroImage ? "text-white" : "text-foreground"}`}>{title}</h1>
+            <p className={`text-lg md:text-xl max-w-2xl mx-auto drop-shadow-md ${heroImage ? "text-white/90" : "text-muted-foreground"}`}>
+              {subtitle}
             </p>
+            {watermarkUrl && (
+              <div className="flex justify-center mt-8">
+                <img src={watermarkUrl} alt="Event" className="h-48 w-auto object-contain drop-shadow-2xl" />
+              </div>
+            )}
           </div>
         </div>
 
@@ -350,11 +370,30 @@ export default function RegistrationForm({ heroImage = "/freefire-bg.jpg" }: Reg
           </CardContent>
         </Card>
 
+        {/* Custom links */}
+        {customLinks.length > 0 && (
+          <div className="text-center mt-6 space-y-2">
+            {customLinks.map((link: { label: string; url: string }, index: number) => (
+              <div key={index}>
+                <a
+                  href={link.url}
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className={`text-sm inline-flex items-center gap-2 hover:underline ${heroImage ? "text-white/80 hover:text-white" : "text-primary hover:text-primary/80"}`}
+                >
+                  <LinkIcon className="w-4 h-4" />
+                  {link.label}
+                </a>
+              </div>
+            ))}
+          </div>
+        )}
+
         {/* Admin panel link */}
         <div className="text-center mt-6">
           <a 
             href="/admin" 
-            className="text-sm text-muted-foreground hover:text-primary transition-colors inline-flex items-center gap-2"
+            className={`text-sm transition-colors inline-flex items-center gap-2 ${heroImage ? "text-white/60 hover:text-white" : "text-muted-foreground hover:text-primary"}`}
           >
             <svg className="w-4 h-4" fill="none" stroke="currentColor" viewBox="0 0 24 24">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z" />

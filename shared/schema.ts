@@ -41,28 +41,32 @@ export const adminLoginSchema = z.object({
 
 export type AdminLogin = z.infer<typeof adminLoginSchema>;
 
-// Form settings schema
-export const formSettingsSchema = z.object({
+// Event form schema
+export const eventFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().optional(),
-  logoUrl: z.string().optional(),
+  heroImageUrl: z.string().optional(),
   watermarkUrl: z.string().optional(),
+  logoUrl: z.string().optional(),
   customLinks: z.array(z.object({
     label: z.string(),
     url: z.string().url(),
   })).optional(),
-  showQrInForm: z.boolean().default(false),
+  description: z.string().optional(),
 });
 
-export type FormSettings = z.infer<typeof formSettingsSchema>;
+export type EventFormInput = z.infer<typeof eventFormSchema>;
 
-export interface FormSettingsData {
+export interface EventForm {
   id: number;
   title: string;
   subtitle: string | null;
-  logoUrl: string | null;
+  heroImageUrl: string | null;
   watermarkUrl: string | null;
-  customLinks: string | null;
-  showQrInForm: boolean;
+  logoUrl: string | null;
+  customLinks: Array<{ label: string; url: string }>;
+  description: string | null;
+  isPublished: boolean;
+  createdAt: string;
   updatedAt: string;
 }

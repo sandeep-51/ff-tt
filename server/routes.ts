@@ -7,7 +7,7 @@ import multer from "multer";
 import path from "path";
 import fs from "fs";
 import { storage } from "./storage";
-import { insertRegistrationSchema, adminLoginSchema, formSettingsSchema } from "@shared/schema";
+import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@shared/schema";
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
 
@@ -118,18 +118,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/form-settings - Get form settings (public)
-  app.get("/api/form-settings", async (req, res) => {
+  // GET /api/published-form - Get published form (public)
+  app.get("/api/published-form", async (req, res) => {
     try {
-      const settings = await storage.getFormSettings();
-      res.json(settings || {
-        title: "Event Registration",
-        subtitle: "Register now to receive your secure QR-based entry pass",
-        customLinks: [],
-        showQrInForm: false,
-      });
+      const form = await storage.getPublishedForm();
+      res.json(form);
     } catch (error: any) {
-      res.status(500).json({ error: error.message || "Failed to fetch form settings" });
+      res.status(500).json({ error: error.message || "Failed to fetch published form" });
     }
   });
 
@@ -327,20 +322,106 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // PUT /api/admin/form-settings - Update form settings
-  app.put("/api/admin/form-settings", requireAdmin, express.json(), async (req, res) => {
+  // POST /api/admin/forms - Create new event form
+  app.post("/api/admin/forms", requireAdmin, express.json(), async (req, res) => {
     try {
-      const validated = formSettingsSchema.parse(req.body);
-      const success = await storage.updateFormSettings(validated);
+      const validated = eventFormSchema.parse(req.body);
+      const form = await storage.createEventForm(validated);
+      res.json({ success: true, form });
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Invalid form data" });
+    }
+  });
+
+  // GET /api/admin/forms - Get all event forms
+  app.get("/api/admin/forms", requireAdmin, async (req, res) => {
+    try {
+      const forms = await storage.getAllEventForms();
+      res.json(forms);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch forms" });
+    }
+  });
+
+  // GET /api/admin/forms/:id - Get specific event form
+  app.get("/api/admin/forms/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const form = await storage.getEventForm(id);
+      if (!form) {
+        return res.status(404).json({ error: "Form not found" });
+      }
+      res.json(form);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch form" });
+    }
+  });
+
+  // PUT /api/admin/forms/:id - Update event form
+  app.put("/api/admin/forms/:id", requireAdmin, express.json(), async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const validated = eventFormSchema.parse(req.body);
+      const success = await storage.updateEventForm(id, validated);
       
       if (success) {
-        const updated = await storage.getFormSettings();
-        res.json({ success: true, settings: updated });
+        const updated = await storage.getEventForm(id);
+        res.json({ success: true, form: updated });
       } else {
-        res.status(500).json({ error: "Failed to update form settings" });
+        res.status(500).json({ error: "Failed to update form" });
       }
     } catch (error: any) {
-      res.status(400).json({ error: error.message || "Invalid form settings data" });
+      res.status(400).json({ error: error.message || "Invalid form data" });
+    }
+  });
+
+  // POST /api/admin/forms/:id/publish - Publish event form
+  app.post("/api/admin/forms/:id/publish", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.publishEventForm(id);
+      
+      if (success) {
+        const form = await storage.getEventForm(id);
+        res.json({ success: true, form });
+      } else {
+        res.status(500).json({ error: "Failed to publish form" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Publish failed" });
+    }
+  });
+
+  // POST /api/admin/forms/:id/unpublish - Unpublish event form
+  app.post("/api/admin/forms/:id/unpublish", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.unpublishEventForm(id);
+      
+      if (success) {
+        const form = await storage.getEventForm(id);
+        res.json({ success: true, form });
+      } else {
+        res.status(500).json({ error: "Failed to unpublish form" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Unpublish failed" });
+    }
+  });
+
+  // DELETE /api/admin/forms/:id - Delete event form
+  app.delete("/api/admin/forms/:id", requireAdmin, async (req, res) => {
+    try {
+      const id = parseInt(req.params.id);
+      const success = await storage.deleteEventForm(id);
+      
+      if (success) {
+        res.json({ success: true });
+      } else {
+        res.status(500).json({ error: "Failed to delete form" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Delete failed" });
     }
   });
 

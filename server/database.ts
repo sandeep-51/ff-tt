@@ -32,30 +32,25 @@ db.exec(`
     FOREIGN KEY (ticketId) REFERENCES registrations(id)
   );
 
-  CREATE TABLE IF NOT EXISTS form_settings (
-    id INTEGER PRIMARY KEY CHECK (id = 1),
-    title TEXT NOT NULL DEFAULT 'Event Registration',
+  CREATE TABLE IF NOT EXISTS event_forms (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    title TEXT NOT NULL,
     subtitle TEXT,
-    logoUrl TEXT,
+    heroImageUrl TEXT,
     watermarkUrl TEXT,
+    logoUrl TEXT,
     customLinks TEXT,
-    showQrInForm INTEGER DEFAULT 0,
+    description TEXT,
+    isPublished INTEGER DEFAULT 0,
+    createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
   );
 
   CREATE INDEX IF NOT EXISTS idx_registrations_status ON registrations(status);
   CREATE INDEX IF NOT EXISTS idx_registrations_email ON registrations(email);
   CREATE INDEX IF NOT EXISTS idx_scan_history_ticket ON scan_history(ticketId);
+  CREATE INDEX IF NOT EXISTS idx_event_forms_published ON event_forms(isPublished);
 `);
-
-// Initialize default form settings if not exists
-const initSettings = db.prepare('SELECT COUNT(*) as count FROM form_settings').get() as { count: number };
-if (initSettings.count === 0) {
-  db.prepare(`
-    INSERT INTO form_settings (id, title, subtitle)
-    VALUES (1, 'Event Registration', 'Register now to receive your secure QR-based entry pass')
-  `).run();
-}
 
 export class TicketDatabase {
   // Registration methods
@@ -246,12 +241,58 @@ export class TicketDatabase {
     };
   }
 
-  // Form settings methods
-  getFormSettings() {
+  // Event form methods
+  createEventForm(data: {
+    title: string;
+    subtitle?: string;
+    heroImageUrl?: string;
+    watermarkUrl?: string;
+    logoUrl?: string;
+    customLinks?: Array<{ label: string; url: string }>;
+    description?: string;
+  }) {
     const stmt = db.prepare(`
-      SELECT id, title, subtitle, logoUrl, watermarkUrl, customLinks, showQrInForm, updatedAt
-      FROM form_settings
-      WHERE id = 1
+      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description)
+      VALUES (?, ?, ?, ?, ?, ?, ?)
+    `);
+
+    const result = stmt.run(
+      data.title,
+      data.subtitle || null,
+      data.heroImageUrl || null,
+      data.watermarkUrl || null,
+      data.logoUrl || null,
+      data.customLinks ? JSON.stringify(data.customLinks) : null,
+      data.description || null
+    );
+
+    return this.getEventForm(Number(result.lastInsertRowid));
+  }
+
+  getEventForm(id: number) {
+    const stmt = db.prepare(`
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      FROM event_forms
+      WHERE id = ?
+    `);
+
+    const row = stmt.get(id) as any;
+    if (!row) return null;
+
+    return {
+      ...row,
+      isPublished: Boolean(row.isPublished),
+      customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
+    };
+  }
+
+  getPublishedForm() {
+    const stmt = db.prepare(`
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      FROM event_forms
+      WHERE isPublished = 1
+      ORDER BY updatedAt DESC
+      LIMIT 1
     `);
 
     const row = stmt.get() as any;
@@ -259,61 +300,101 @@ export class TicketDatabase {
 
     return {
       ...row,
-      showQrInForm: Boolean(row.showQrInForm),
+      isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
     };
   }
 
-  updateFormSettings(settings: {
+  getAllEventForms() {
+    const stmt = db.prepare(`
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      FROM event_forms
+      ORDER BY updatedAt DESC
+    `);
+
+    const rows = stmt.all() as any[];
+    return rows.map((row) => ({
+      ...row,
+      isPublished: Boolean(row.isPublished),
+      customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
+    }));
+  }
+
+  updateEventForm(id: number, data: {
     title?: string;
     subtitle?: string;
-    logoUrl?: string;
+    heroImageUrl?: string;
     watermarkUrl?: string;
+    logoUrl?: string;
     customLinks?: Array<{ label: string; url: string }>;
-    showQrInForm?: boolean;
+    description?: string;
   }) {
-    const current = this.getFormSettings();
-    if (!current) return false;
-
     const updates: string[] = [];
     const values: any[] = [];
 
-    if (settings.title !== undefined) {
+    if (data.title !== undefined) {
       updates.push("title = ?");
-      values.push(settings.title);
+      values.push(data.title);
     }
-    if (settings.subtitle !== undefined) {
+    if (data.subtitle !== undefined) {
       updates.push("subtitle = ?");
-      values.push(settings.subtitle || null);
+      values.push(data.subtitle || null);
     }
-    if (settings.logoUrl !== undefined) {
-      updates.push("logoUrl = ?");
-      values.push(settings.logoUrl || null);
+    if (data.heroImageUrl !== undefined) {
+      updates.push("heroImageUrl = ?");
+      values.push(data.heroImageUrl || null);
     }
-    if (settings.watermarkUrl !== undefined) {
+    if (data.watermarkUrl !== undefined) {
       updates.push("watermarkUrl = ?");
-      values.push(settings.watermarkUrl || null);
+      values.push(data.watermarkUrl || null);
     }
-    if (settings.customLinks !== undefined) {
+    if (data.logoUrl !== undefined) {
+      updates.push("logoUrl = ?");
+      values.push(data.logoUrl || null);
+    }
+    if (data.customLinks !== undefined) {
       updates.push("customLinks = ?");
-      values.push(JSON.stringify(settings.customLinks));
+      values.push(JSON.stringify(data.customLinks));
     }
-    if (settings.showQrInForm !== undefined) {
-      updates.push("showQrInForm = ?");
-      values.push(settings.showQrInForm ? 1 : 0);
+    if (data.description !== undefined) {
+      updates.push("description = ?");
+      values.push(data.description || null);
     }
 
-    if (updates.length === 0) return true;
+    if (updates.length === 0) return false;
 
     updates.push("updatedAt = CURRENT_TIMESTAMP");
+    values.push(id);
 
     const stmt = db.prepare(`
-      UPDATE form_settings
+      UPDATE event_forms
       SET ${updates.join(", ")}
-      WHERE id = 1
+      WHERE id = ?
     `);
 
     const result = stmt.run(...values);
+    return result.changes > 0;
+  }
+
+  publishEventForm(id: number) {
+    // Unpublish all other forms first
+    db.prepare("UPDATE event_forms SET isPublished = 0").run();
+
+    // Publish this form
+    const stmt = db.prepare("UPDATE event_forms SET isPublished = 1, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  unpublishEventForm(id: number) {
+    const stmt = db.prepare("UPDATE event_forms SET isPublished = 0, updatedAt = CURRENT_TIMESTAMP WHERE id = ?");
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  deleteEventForm(id: number) {
+    const stmt = db.prepare("DELETE FROM event_forms WHERE id = ?");
+    const result = stmt.run(id);
     return result.changes > 0;
   }
 }
