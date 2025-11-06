@@ -24,7 +24,7 @@ export interface Registration {
   maxScans: number;
   hasQR: boolean;
   qrCodeData: string | null;
-  status: "pending" | "active" | "exhausted" | "invalid";
+  status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt?: string;
 }
 
@@ -49,6 +49,7 @@ export default function RegistrationsTable({
     const statusConfig = {
       pending: { label: "Pending QR", variant: "secondary" as const, icon: Clock },
       active: { label: `Active (${scans}/${maxScans})`, variant: "default" as const, icon: CheckCircle2 },
+      "checked-in": { label: "Checked In", variant: "default" as const, icon: CheckCircle2 },
       exhausted: { label: `Exhausted (${maxScans}/${maxScans})`, variant: "destructive" as const, icon: XCircle },
       invalid: { label: "Invalid", variant: "destructive" as const, icon: XCircle },
     };

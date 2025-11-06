@@ -149,22 +149,20 @@ export class TicketDatabase {
       };
     }
 
-    if (registration.scans >= registration.maxScans) {
+    // Check if already scanned (scans > 0)
+    if (registration.scans > 0) {
       return {
         valid: false,
         registration,
-        message: "Maximum entries reached. QR code exhausted.",
+        message: "Already scanned. Entry already recorded.",
       };
     }
 
-    // Increment scan count
+    // First scan - set status to 'checked-in'
     const updateStmt = db.prepare(`
       UPDATE registrations
-      SET scans = scans + 1,
-          status = CASE 
-            WHEN scans + 1 >= maxScans THEN 'exhausted'
-            ELSE 'active'
-          END
+      SET scans = 1,
+          status = 'checked-in'
       WHERE id = ?
     `);
 
@@ -176,13 +174,10 @@ export class TicketDatabase {
     // Get updated registration
     const updatedReg = this.getRegistration(ticketId)!;
 
-    const remainingScans = updatedReg.maxScans - updatedReg.scans;
     return {
       valid: true,
       registration: updatedReg,
-      message: remainingScans > 0
-        ? `Entry granted. ${remainingScans} ${remainingScans === 1 ? 'entry' : 'entries'} remaining.`
-        : "Entry granted. This was the last entry.",
+      message: "Entry granted. Successfully checked in.",
     };
   }
 

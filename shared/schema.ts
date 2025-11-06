@@ -22,7 +22,7 @@ export interface Registration {
   maxScans: number;
   hasQR: boolean;
   qrCodeData: string | null;
-  status: "pending" | "active" | "exhausted" | "invalid";
+  status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt: string;
 }
 
