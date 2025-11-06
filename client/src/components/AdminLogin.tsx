@@ -82,11 +82,13 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
           </div>
           
           {/* Admin credentials note */}
-          <div className="bg-muted/50 border border-border rounded-lg p-4 text-sm">
-            <p className="font-semibold mb-1">Default Admin Credentials:</p>
-            <p className="text-muted-foreground font-mono">Password: admin123</p>
-            <p className="text-xs text-muted-foreground mt-2">
-              (Change this in production via environment variables)
+          <div className="bg-primary/10 border-2 border-primary rounded-lg p-5 text-sm">
+            <p className="font-bold text-lg mb-2 text-primary">Default Admin Credentials:</p>
+            <div className="bg-background rounded p-3 mb-2">
+              <p className="font-mono text-base font-bold">Password: admin123</p>
+            </div>
+            <p className="text-xs text-muted-foreground">
+              ⚠️ Change this in production via environment variables
             </p>
           </div>
         </div>
