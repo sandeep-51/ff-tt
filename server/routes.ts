@@ -83,7 +83,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/register", express.json(), async (req, res) => {
     try {
       const validated = insertRegistrationSchema.parse(req.body);
-      const registration = await storage.createRegistration(validated);
+      
+      // Get the published form to associate with this registration
+      const publishedForm = await storage.getPublishedForm();
+      const formId = publishedForm?.id || null;
+      
+      const registration = await storage.createRegistration({
+        ...validated,
+        formId,
+      });
       res.json(registration);
     } catch (error: any) {
       res.status(400).json({ error: error.message || "Invalid registration data" });

@@ -2,11 +2,12 @@ import { z } from "zod";
 
 // Registration schema
 export const insertRegistrationSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
+  name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  organization: z.string().min(2, "Organization must be at least 2 characters"),
-  groupSize: z.number().int().min(1).max(4),
+  phone: z.string().min(1, "Phone is required"),
+  organization: z.string().min(1, "Organization is required"),
+  groupSize: z.number().min(1).max(4),
+  formId: z.number().nullable().optional(),
 });
 
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;

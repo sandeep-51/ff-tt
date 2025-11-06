@@ -72,22 +72,43 @@ export class TicketDatabase {
     this.db = db; // Use the already initialized db instance
   }
 
+  // Helper to generate a unique ticket ID
+  private generateTicketId(): string {
+    return `REG${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
+  }
+
   // Registration methods
-  createRegistration(data: InsertRegistration, formId?: number): Registration {
-    const id = `REG${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
+  createRegistration(data: InsertRegistration): Registration {
+    const id = this.generateTicketId();
+    const maxScans = data.groupSize * 4;
+
     const stmt = this.db.prepare(`
-      INSERT INTO registrations (id, name, email, phone, organization, groupSize, formId)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
-    stmt.run(id, data.name, data.email, data.phone, data.organization, data.groupSize, formId !== undefined ? formId : null);
+    stmt.run(
+      id,
+      data.name,
+      data.email,
+      data.phone,
+      data.organization,
+      data.groupSize,
+      maxScans,
+      data.formId || null
+    );
 
-    return this.getRegistration(id)!;
+    const registration = this.getRegistration(id);
+    if (!registration) {
+      throw new Error("Failed to create registration");
+    }
+
+    return registration;
   }
 
   getRegistration(id: string): Registration | undefined {
     const stmt = this.db.prepare(`
-      SELECT 
+      SELECT
         id,
         name,
         email,
@@ -116,7 +137,7 @@ export class TicketDatabase {
 
   getAllRegistrations(): Registration[] {
     const stmt = this.db.prepare(`
-      SELECT 
+      SELECT
         id,
         name,
         email,
@@ -143,7 +164,7 @@ export class TicketDatabase {
 
   getRegistrationsByFormId(formId: number): Registration[] {
     const stmt = this.db.prepare(`
-      SELECT 
+      SELECT
         id,
         name,
         email,
@@ -157,7 +178,7 @@ export class TicketDatabase {
         status,
         createdAt,
         formId
-      FROM registrations 
+      FROM registrations
       WHERE formId = ? ORDER BY createdAt DESC
     `);
     const rows = stmt.all(formId) as any[];
@@ -298,6 +319,14 @@ export class TicketDatabase {
       qrCodesGenerated: qrGenerated.count,
       totalEntries: totalScans.total || 0,
       activeRegistrations: activeRegs.count,
+    };
+  }
+
+  // Get form statistics (number of registrations for a given form)
+  getFormStats(formId: number): { totalRegistrations: number } {
+    const totalRegs = this.db.prepare("SELECT COUNT(*) as count FROM registrations WHERE formId = ?").get({ formId }) as { count: number };
+    return {
+      totalRegistrations: totalRegs.count,
     };
   }
 
