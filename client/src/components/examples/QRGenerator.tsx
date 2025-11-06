@@ -13,6 +13,7 @@ const mockPendingRegistrations: Registration[] = [
     scans: 0,
     maxScans: 4,
     hasQR: false,
+    qrCodeData: null,
     status: "pending",
   },
   {
@@ -25,6 +26,7 @@ const mockPendingRegistrations: Registration[] = [
     scans: 0,
     maxScans: 4,
     hasQR: false,
+    qrCodeData: null,
     status: "pending",
   },
   {
@@ -37,6 +39,7 @@ const mockPendingRegistrations: Registration[] = [
     scans: 0,
     maxScans: 4,
     hasQR: false,
+    qrCodeData: null,
     status: "pending",
   },
 ];

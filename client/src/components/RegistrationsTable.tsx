@@ -23,7 +23,9 @@ export interface Registration {
   scans: number;
   maxScans: number;
   hasQR: boolean;
+  qrCodeData: string | null;
   status: "pending" | "active" | "exhausted" | "invalid";
+  createdAt?: string;
 }
 
 interface RegistrationsTableProps {

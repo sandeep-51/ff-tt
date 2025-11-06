@@ -1,7 +1,7 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { Switch, Route } from "wouter";
 import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
+import { QueryClientProvider, useQuery } from "@tanstack/react-query";
 import { Toaster } from "@/components/ui/toaster";
 import { TooltipProvider } from "@/components/ui/tooltip";
 import NotFound from "@/pages/not-found";
@@ -9,105 +9,81 @@ import RegistrationForm from "@/components/RegistrationForm";
 import AdminLogin from "@/components/AdminLogin";
 import AdminDashboard from "@/components/AdminDashboard";
 import heroImage from "@assets/generated_images/Event_venue_hero_image_9ef8bf32.png";
-import type { Registration } from "@/components/RegistrationsTable";
 
-// TODO: Remove mock functionality
-const mockRegistrations: Registration[] = [
-  {
-    id: "REG001",
-    name: "Sarah Johnson",
-    email: "sarah.j@techcorp.com",
-    phone: "+1 555-0101",
-    organization: "TechCorp Inc",
-    groupSize: 2,
-    scans: 1,
-    maxScans: 4,
-    hasQR: true,
-    status: "active",
-  },
-  {
-    id: "REG002",
-    name: "Michael Chen",
-    email: "m.chen@innovate.io",
-    phone: "+1 555-0102",
-    organization: "Innovate Solutions",
-    groupSize: 1,
-    scans: 0,
-    maxScans: 4,
-    hasQR: true,
-    status: "active",
-  },
-  {
-    id: "REG003",
-    name: "Emily Rodriguez",
-    email: "emily.r@startup.co",
-    phone: "+1 555-0103",
-    organization: "StartupCo",
-    groupSize: 4,
-    scans: 4,
-    maxScans: 4,
-    hasQR: true,
-    status: "exhausted",
-  },
-  {
-    id: "REG004",
-    name: "James Wilson",
-    email: "james.w@enterprise.com",
-    phone: "+1 555-0104",
-    organization: "Enterprise Systems",
-    groupSize: 3,
-    scans: 0,
-    maxScans: 4,
-    hasQR: false,
-    status: "pending",
-  },
-  {
-    id: "REG005",
-    name: "Lisa Anderson",
-    email: "l.anderson@digital.net",
-    phone: "+1 555-0105",
-    organization: "Digital Networks",
-    groupSize: 2,
-    scans: 2,
-    maxScans: 4,
-    hasQR: true,
-    status: "active",
-  },
-  {
-    id: "REG006",
-    name: "David Martinez",
-    email: "d.martinez@consulting.com",
-    phone: "+1 555-0106",
-    organization: "Martinez Consulting",
-    groupSize: 1,
-    scans: 0,
-    maxScans: 4,
-    hasQR: false,
-    status: "pending",
-  },
-];
+function AdminRoute() {
+  const [isChecking, setIsChecking] = useState(true);
+  const [isLoggedIn, setIsLoggedIn] = useState(false);
+
+  useEffect(() => {
+    // Check if admin is already logged in
+    fetch("/api/admin/check", { credentials: "include" })
+      .then(res => res.json())
+      .then(data => {
+        setIsLoggedIn(data.isAdmin || false);
+        setIsChecking(false);
+      })
+      .catch(() => {
+        setIsLoggedIn(false);
+        setIsChecking(false);
+      });
+  }, []);
+
+  if (isChecking) {
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center">
+        <div className="text-center space-y-4">
+          <div className="animate-spin h-8 w-8 border-4 border-primary border-t-transparent rounded-full mx-auto" />
+          <p className="text-muted-foreground">Loading...</p>
+        </div>
+      </div>
+    );
+  }
+
+  if (isLoggedIn) {
+    return (
+      <AdminDashboard
+        onLogout={() => {
+          setIsLoggedIn(false);
+          // Invalidate all queries on logout
+          queryClient.clear();
+        }}
+      />
+    );
+  }
+
+  return (
+    <AdminLogin
+      onLogin={() => {
+        setIsLoggedIn(true);
+      }}
+    />
+  );
+}
 
 function Router() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-
   return (
     <Switch>
       <Route path="/">
-        <RegistrationForm
-          heroImage={heroImage}
-          onSubmit={(data) => console.log("Registration submitted:", data)}
-        />
+        <RegistrationForm heroImage={heroImage} />
       </Route>
 
       <Route path="/admin">
-        {isAdminLoggedIn ? (
-          <AdminDashboard
-            registrations={mockRegistrations}
-            onLogout={() => setIsAdminLoggedIn(false)}
-          />
-        ) : (
-          <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} />
-        )}
+        <AdminRoute />
+      </Route>
+
+      <Route path="/verify">
+        {/* Verification page - will show scan result */}
+        <div className="min-h-screen bg-background flex items-center justify-center p-6">
+          <div className="max-w-md w-full text-center space-y-4">
+            <h1 className="text-2xl font-bold">QR Code Verification</h1>
+            <p className="text-muted-foreground">
+              This page is accessed by scanning QR codes at the event entrance.
+            </p>
+            <p className="text-sm text-muted-foreground">
+              Admin staff will use the scanner in the admin dashboard to verify entries.
+            </p>
+          </div>
+        </div>
       </Route>
 
       <Route component={NotFound} />

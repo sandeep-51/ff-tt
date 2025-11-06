@@ -2,6 +2,7 @@ import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -14,7 +15,9 @@ import {
 import { Input } from "@/components/ui/input";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const registrationSchema = z.object({
   name: z.string().min(2, "Name must be at least 2 characters"),
@@ -29,13 +32,12 @@ const registrationSchema = z.object({
 type RegistrationFormData = z.infer<typeof registrationSchema>;
 
 interface RegistrationFormProps {
-  onSubmit?: (data: RegistrationFormData) => void;
   heroImage?: string;
 }
 
-export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFormProps) {
-  const [isSubmitted, setIsSubmitted] = useState(false);
-  const [submittedData, setSubmittedData] = useState<RegistrationFormData | null>(null);
+export default function RegistrationForm({ heroImage }: RegistrationFormProps) {
+  const { toast } = useToast();
+  const [submittedData, setSubmittedData] = useState<any | null>(null);
 
   const form = useForm<RegistrationFormData>({
     resolver: zodResolver(registrationSchema),
@@ -48,14 +50,35 @@ export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFo
     },
   });
 
+  const mutation = useMutation({
+    mutationFn: async (data: RegistrationFormData) => {
+      const response = await apiRequest("POST", "/api/register", {
+        ...data,
+        groupSize: parseInt(data.groupSize),
+      });
+      return response.json();
+    },
+    onSuccess: (data) => {
+      setSubmittedData(data);
+      toast({
+        title: "Registration Successful",
+        description: "Your registration has been submitted successfully.",
+      });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Registration Failed",
+        description: error.message || "An error occurred during registration.",
+        variant: "destructive",
+      });
+    },
+  });
+
   const handleSubmit = (data: RegistrationFormData) => {
-    console.log("Registration submitted:", data);
-    setSubmittedData(data);
-    setIsSubmitted(true);
-    onSubmit?.(data);
+    mutation.mutate(data);
   };
 
-  if (isSubmitted && submittedData) {
+  if (submittedData) {
     return (
       <div className="min-h-screen bg-background flex items-center justify-center p-6">
         <div className="max-w-2xl w-full space-y-8">
@@ -81,6 +104,10 @@ export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFo
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
+                  <p className="text-sm text-muted-foreground">Registration ID</p>
+                  <p className="font-medium font-mono">{submittedData.id}</p>
+                </div>
+                <div>
                   <p className="text-sm text-muted-foreground">Name</p>
                   <p className="font-medium">{submittedData.name}</p>
                 </div>
@@ -98,7 +125,7 @@ export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFo
                 </div>
                 <div>
                   <p className="text-sm text-muted-foreground">Group Size</p>
-                  <p className="font-medium">{submittedData.groupSize} {parseInt(submittedData.groupSize) === 1 ? 'person' : 'people'}</p>
+                  <p className="font-medium">{submittedData.groupSize} {submittedData.groupSize === 1 ? 'person' : 'people'}</p>
                 </div>
               </div>
 
@@ -118,7 +145,6 @@ export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFo
             <Button
               variant="outline"
               onClick={() => {
-                setIsSubmitted(false);
                 setSubmittedData(null);
                 form.reset();
               }}
@@ -305,9 +331,17 @@ export default function RegistrationForm({ onSubmit, heroImage }: RegistrationFo
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-semibold"
+                  disabled={mutation.isPending}
                   data-testid="button-submit-registration"
                 >
-                  Complete Registration
+                  {mutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Submitting...
+                    </>
+                  ) : (
+                    "Complete Registration"
+                  )}
                 </Button>
               </form>
             </Form>

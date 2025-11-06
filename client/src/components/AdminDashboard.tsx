@@ -1,28 +1,153 @@
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { LogOut, Shield } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
 import RegistrationsTable, { type Registration } from "./RegistrationsTable";
 import QRGenerator from "./QRGenerator";
 import QRScanner from "./QRScanner";
 import ExportData from "./ExportData";
 
 interface AdminDashboardProps {
-  onLogout?: () => void;
-  registrations?: Registration[];
+  onLogout: () => void;
 }
 
-export default function AdminDashboard({
-  onLogout,
-  registrations = [],
-}: AdminDashboardProps) {
+export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
+  const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("registrations");
 
-  const stats = {
-    totalRegistrations: registrations.length,
-    qrCodesGenerated: registrations.filter((r) => r.hasQR).length,
-    totalEntries: registrations.reduce((sum, r) => sum + r.scans, 0),
-    activeRegistrations: registrations.filter((r) => r.status === "active").length,
+  // Fetch all registrations
+  const { data: registrations = [], refetch } = useQuery<Registration[]>({
+    queryKey: ["/api/admin/registrations"],
+  });
+
+  // Fetch stats
+  const { data: stats } = useQuery<{
+    totalRegistrations: number;
+    qrCodesGenerated: number;
+    totalEntries: number;
+    activeRegistrations: number;
+  }>({
+    queryKey: ["/api/admin/stats"],
+  });
+
+  // Logout mutation
+  const logoutMutation = useMutation({
+    mutationFn: async () => {
+      const response = await apiRequest("POST", "/api/admin/logout", {});
+      return response.json();
+    },
+    onSuccess: () => {
+      onLogout();
+    },
+  });
+
+  const handleLogout = () => {
+    logoutMutation.mutate();
+  };
+
+  const handleGenerateQR = async (id: string) => {
+    try {
+      const response = await apiRequest("POST", `/api/admin/generate-qr/${id}`, {});
+      const data = await response.json();
+      
+      toast({
+        title: "QR Code Generated",
+        description: `QR code created for registration ${id}`,
+      });
+
+      // Invalidate and refetch registrations
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+    } catch (error: any) {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleVerifyScan = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/verify?t=${ticketId}`, {
+        credentials: "include",
+      });
+      
+      if (!response.ok) {
+        throw new Error("Verification failed");
+      }
+
+      const data = await response.json();
+
+      // Invalidate queries to update the UI
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/stats"] });
+
+      return {
+        ticketId,
+        name: data.registration?.name || "Unknown",
+        organization: data.registration?.organization || "N/A",
+        groupSize: data.registration?.groupSize || 1,
+        scansUsed: data.registration?.scansUsed || 0,
+        maxScans: data.registration?.maxScans || 4,
+        valid: data.valid,
+        message: data.message,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      return {
+        ticketId,
+        name: "Unknown",
+        organization: "N/A",
+        groupSize: 1,
+        scansUsed: 0,
+        maxScans: 4,
+        valid: false,
+        message: "Invalid ticket or verification failed",
+        timestamp: new Date(),
+      };
+    }
+  };
+
+  const handleExport = async (format: string, filter: string) => {
+    try {
+      const url = `/api/admin/export?format=${format}&filter=${filter}`;
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Export failed");
+      }
+
+      // Create blob and download
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+      
+      const extension = format === "pdf" ? "pdf" : format === "json" ? "json" : "csv";
+      link.download = `registrations-${Date.now()}.${extension}`;
+      
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({
+        title: "Export Successful",
+        description: `Data exported as ${format.toUpperCase()}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export data",
+        variant: "destructive",
+      });
+    }
   };
 
   return (
@@ -41,10 +166,8 @@ export default function AdminDashboard({
 
           <Button
             variant="outline"
-            onClick={() => {
-              console.log("Logging out");
-              onLogout?.();
-            }}
+            onClick={handleLogout}
+            disabled={logoutMutation.isPending}
             data-testid="button-logout"
           >
             <LogOut className="h-4 w-4 mr-2" />
@@ -74,7 +197,7 @@ export default function AdminDashboard({
             <RegistrationsTable
               registrations={registrations}
               onGenerateQR={(id) => {
-                console.log("Generate QR for:", id);
+                handleGenerateQR(id);
                 setActiveTab("generate");
               }}
             />
@@ -83,26 +206,25 @@ export default function AdminDashboard({
           <TabsContent value="generate">
             <QRGenerator
               registrations={registrations}
-              onGenerate={(id) => console.log("Generated QR for:", id)}
+              onGenerate={handleGenerateQR}
             />
           </TabsContent>
 
           <TabsContent value="scan">
             <QRScanner
-              onScan={(ticketId) => {
-                console.log("Scanned:", ticketId);
-                // Return null to use default mock behavior
-                return null;
-              }}
+              onScan={handleVerifyScan}
             />
           </TabsContent>
 
           <TabsContent value="export">
             <ExportData
-              stats={stats}
-              onExport={(format, filter) =>
-                console.log(`Export ${filter} as ${format}`)
-              }
+              stats={stats || {
+                totalRegistrations: 0,
+                qrCodesGenerated: 0,
+                totalEntries: 0,
+                activeRegistrations: 0,
+              }}
+              onExport={handleExport}
             />
           </TabsContent>
         </Tabs>

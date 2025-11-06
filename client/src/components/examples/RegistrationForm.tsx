@@ -5,7 +5,6 @@ export default function RegistrationFormExample() {
   return (
     <RegistrationForm
       heroImage={heroImage}
-      onSubmit={(data) => console.log("Form submitted:", data)}
     />
   );
 }

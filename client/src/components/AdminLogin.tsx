@@ -1,7 +1,7 @@
-import { useState } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
+import { useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import {
   Form,
@@ -13,7 +13,9 @@ import {
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Lock, Shield } from "lucide-react";
+import { Lock, Shield, Loader2 } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest } from "@/lib/queryClient";
 
 const loginSchema = z.object({
   password: z.string().min(1, "Password is required"),
@@ -22,11 +24,11 @@ const loginSchema = z.object({
 type LoginFormData = z.infer<typeof loginSchema>;
 
 interface AdminLoginProps {
-  onLogin?: (password: string) => void;
+  onLogin: () => void;
 }
 
 export default function AdminLogin({ onLogin }: AdminLoginProps) {
-  const [error, setError] = useState<string | null>(null);
+  const { toast } = useToast();
 
   const form = useForm<LoginFormData>({
     resolver: zodResolver(loginSchema),
@@ -35,16 +37,32 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
     },
   });
 
+  const mutation = useMutation({
+    mutationFn: async (data: LoginFormData) => {
+      const response = await apiRequest("POST", "/api/admin/login", data);
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Login Successful",
+        description: "Welcome to the admin dashboard.",
+      });
+      onLogin();
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Login Failed",
+        description: error.message || "Invalid password. Please try again.",
+        variant: "destructive",
+      });
+      form.setError("password", {
+        message: "Invalid password",
+      });
+    },
+  });
+
   const handleSubmit = (data: LoginFormData) => {
-    console.log("Login attempt with password:", data.password);
-    setError(null);
-    
-    // TODO: Remove mock functionality - Replace with actual API call
-    if (data.password === "admin123") {
-      onLogin?.(data.password);
-    } else {
-      setError("Invalid password. Please try again.");
-    }
+    mutation.mutate(data);
   };
 
   return (
@@ -97,25 +115,21 @@ export default function AdminLogin({ onLogin }: AdminLoginProps) {
                   )}
                 />
 
-                {error && (
-                  <div className="p-3 rounded-lg bg-destructive/10 border border-destructive/20">
-                    <p className="text-sm text-destructive" data-testid="text-error">
-                      {error}
-                    </p>
-                  </div>
-                )}
-
                 <Button
                   type="submit"
                   className="w-full h-12 text-base font-semibold"
+                  disabled={mutation.isPending}
                   data-testid="button-login"
                 >
-                  Sign In
+                  {mutation.isPending ? (
+                    <>
+                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                      Signing in...
+                    </>
+                  ) : (
+                    "Sign In"
+                  )}
                 </Button>
-
-                <div className="text-center text-sm text-muted-foreground">
-                  TODO: Demo password is "admin123"
-                </div>
               </form>
             </Form>
           </CardContent>

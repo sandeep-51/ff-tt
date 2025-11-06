@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
@@ -10,6 +10,7 @@ import {
   Users,
   Scan,
 } from "lucide-react";
+import { Html5Qrcode } from "html5-qrcode";
 
 interface ScanResult {
   ticketId: string;
@@ -24,82 +25,86 @@ interface ScanResult {
 }
 
 interface QRScannerProps {
-  onScan?: (ticketId: string) => ScanResult | null;
+  onScan?: (ticketId: string) => Promise<ScanResult> | ScanResult | null;
 }
 
 export default function QRScanner({ onScan }: QRScannerProps) {
   const [isScanning, setIsScanning] = useState(false);
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
+  const [error, setError] = useState<string | null>(null);
+  const scannerRef = useRef<Html5Qrcode | null>(null);
+  const qrCodeRegionId = "qr-code-scanner-region";
 
-  const handleStartScanning = () => {
-    setIsScanning(true);
-    console.log("Camera scanning started");
-    
-    // TODO: Remove mock functionality - Simulate scan after 2 seconds
-    setTimeout(() => {
-      handleMockScan();
-    }, 2000);
-  };
-
-  const handleStopScanning = () => {
-    setIsScanning(false);
-    console.log("Camera scanning stopped");
-  };
-
-  const handleMockScan = () => {
-    // TODO: Remove mock functionality
-    const mockTicketId = `REG${String(Math.floor(Math.random() * 900) + 100).padStart(3, "0")}`;
-    const mockResults: ScanResult[] = [
-      {
-        ticketId: mockTicketId,
-        name: "Sarah Johnson",
-        organization: "TechCorp Inc",
-        groupSize: 2,
-        scansUsed: 1,
-        maxScans: 4,
-        valid: true,
-        message: "Entry granted. 3 entries remaining.",
-        timestamp: new Date(),
-      },
-      {
-        ticketId: mockTicketId,
-        name: "Invalid User",
-        organization: "N/A",
-        groupSize: 1,
-        scansUsed: 4,
-        maxScans: 4,
-        valid: false,
-        message: "Maximum entries reached. QR code exhausted.",
-        timestamp: new Date(),
-      },
-      {
-        ticketId: mockTicketId,
-        name: "Michael Chen",
-        organization: "Innovate Solutions",
-        groupSize: 1,
-        scansUsed: 0,
-        maxScans: 4,
-        valid: true,
-        message: "First entry. 4 entries available.",
-        timestamp: new Date(),
-      },
-    ];
-
-    const result = mockResults[Math.floor(Math.random() * mockResults.length)];
-    
-    if (onScan) {
-      const customResult = onScan(result.ticketId);
-      if (customResult) {
-        setLastResult(customResult);
-        setScanHistory((prev) => [customResult, ...prev].slice(0, 10));
+  useEffect(() => {
+    return () => {
+      // Cleanup scanner on unmount
+      if (scannerRef.current && scannerRef.current.isScanning) {
+        scannerRef.current.stop().catch(console.error);
       }
-    } else {
-      setLastResult(result);
-      setScanHistory((prev) => [result, ...prev].slice(0, 10));
-    }
+    };
+  }, []);
+
+  const handleStartScanning = async () => {
+    setError(null);
     
-    setIsScanning(false);
+    try {
+      const scanner = new Html5Qrcode(qrCodeRegionId);
+      scannerRef.current = scanner;
+
+      const config = {
+        fps: 10,
+        qrbox: { width: 250, height: 250 },
+      };
+
+      await scanner.start(
+        { facingMode: "environment" },
+        config,
+        async (decodedText) => {
+          // Extract ticket ID from the decoded URL
+          let ticketId = decodedText;
+          
+          // If it's a full URL, extract the ticket ID
+          if (decodedText.includes("?t=")) {
+            const url = new URL(decodedText);
+            ticketId = url.searchParams.get("t") || decodedText;
+          }
+
+          // Process the scan
+          await handleScan(ticketId);
+        },
+        (errorMessage) => {
+          // Ignore scanning errors (they're too frequent)
+        }
+      );
+
+      setIsScanning(true);
+    } catch (err: any) {
+      setError(err.message || "Failed to start camera");
+      console.error("Scanner error:", err);
+    }
+  };
+
+  const handleStopScanning = async () => {
+    if (scannerRef.current && scannerRef.current.isScanning) {
+      try {
+        await scannerRef.current.stop();
+        scannerRef.current = null;
+        setIsScanning(false);
+      } catch (err) {
+        console.error("Error stopping scanner:", err);
+      }
+    }
+  };
+
+  const handleScan = async (ticketId: string) => {
+    if (onScan) {
+      const result = await Promise.resolve(onScan(ticketId));
+      if (result) {
+        setLastResult(result);
+        setScanHistory((prev) => [result, ...prev].slice(0, 10));
+      }
+    }
   };
 
   return (
@@ -114,20 +119,10 @@ export default function QRScanner({ onScan }: QRScannerProps) {
               </CardDescription>
             </CardHeader>
             <CardContent className="space-y-6">
-              <div className="aspect-square max-w-2xl mx-auto rounded-lg overflow-hidden bg-muted border-2 border-border relative">
-                {isScanning ? (
-                  <div className="absolute inset-0 flex items-center justify-center bg-black">
-                    <div className="relative">
-                      <div className="h-64 w-64 border-4 border-primary rounded-lg animate-pulse" />
-                      <div className="absolute inset-0 flex items-center justify-center">
-                        <Scan className="h-16 w-16 text-primary animate-pulse" />
-                      </div>
-                      <div className="absolute -top-8 left-1/2 -translate-x-1/2 whitespace-nowrap">
-                        <p className="text-white text-sm font-medium">Scanning for QR code...</p>
-                      </div>
-                    </div>
-                  </div>
-                ) : (
+              <div id={qrCodeRegionId} className="w-full" />
+
+              {!isScanning && (
+                <div className="aspect-square max-w-2xl mx-auto rounded-lg overflow-hidden bg-muted border-2 border-border relative">
                   <div className="absolute inset-0 flex flex-col items-center justify-center space-y-4 p-8">
                     <Camera className="h-16 w-16 text-muted-foreground" />
                     <div className="text-center space-y-2">
@@ -137,8 +132,14 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                       </p>
                     </div>
                   </div>
-                )}
-              </div>
+                </div>
+              )}
+
+              {error && (
+                <div className="p-4 rounded-lg bg-destructive/10 border border-destructive/20">
+                  <p className="text-sm text-destructive">{error}</p>
+                </div>
+              )}
 
               <div className="flex justify-center gap-4">
                 {!isScanning ? (
@@ -220,8 +221,7 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                           <div>
                             <p className="text-xs text-muted-foreground">Entries Used</p>
                             <p className="font-mono font-bold">
-                              {lastResult.scansUsed + (lastResult.valid ? 1 : 0)}/
-                              {lastResult.maxScans}
+                              {lastResult.scansUsed}/{lastResult.maxScans}
                             </p>
                           </div>
                         </div>
@@ -231,7 +231,7 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                             <Users className="h-3 w-3 mr-1" />
                             Group of {lastResult.groupSize}
                           </Badge>
-                          {lastResult.valid && lastResult.scansUsed + 1 === lastResult.maxScans && (
+                          {lastResult.valid && lastResult.scansUsed === lastResult.maxScans && (
                             <Badge variant="secondary">Last Entry</Badge>
                           )}
                         </div>

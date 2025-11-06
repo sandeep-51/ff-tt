@@ -12,6 +12,7 @@ const mockRegistrations: Registration[] = [
     scans: 1,
     maxScans: 4,
     hasQR: true,
+    qrCodeData: null,
     status: "active",
   },
   {
@@ -24,6 +25,7 @@ const mockRegistrations: Registration[] = [
     scans: 0,
     maxScans: 4,
     hasQR: true,
+    qrCodeData: null,
     status: "active",
   },
   {
@@ -36,6 +38,7 @@ const mockRegistrations: Registration[] = [
     scans: 4,
     maxScans: 4,
     hasQR: true,
+    qrCodeData: null,
     status: "exhausted",
   },
   {
@@ -48,6 +51,7 @@ const mockRegistrations: Registration[] = [
     scans: 0,
     maxScans: 4,
     hasQR: false,
+    qrCodeData: null,
     status: "pending",
   },
   {
@@ -60,6 +64,7 @@ const mockRegistrations: Registration[] = [
     scans: 2,
     maxScans: 4,
     hasQR: true,
+    qrCodeData: null,
     status: "active",
   },
 ];
