@@ -11,7 +11,7 @@ import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@sh
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || "K25KN@FreeFire2024";
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || "eventadmin@1111";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
 // Extend session data
