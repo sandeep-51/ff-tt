@@ -4,6 +4,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
 import RegistrationsTable, { type Registration } from "./RegistrationsTable";
 import QRGenerator from "./QRGenerator";
+import QRScanner from "./QRScanner";
 import ExportData from "./ExportData";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
@@ -119,6 +120,48 @@ export default function FormDetails({ formId, onBack }: FormDetailsProps) {
     }
   };
 
+  const handleVerifyScan = async (ticketId: string) => {
+    try {
+      const response = await fetch(`/api/verify?t=${ticketId}`, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Verification failed");
+      }
+
+      const data = await response.json();
+
+      // Invalidate queries to update the UI
+      refetchRegistrations();
+      refetchStats();
+
+      return {
+        ticketId,
+        name: data.registration?.name || "Unknown",
+        organization: data.registration?.organization || "N/A",
+        groupSize: data.registration?.groupSize || 1,
+        scansUsed: data.registration?.scans || 0,
+        maxScans: data.registration?.maxScans || 4,
+        valid: data.valid,
+        message: data.message,
+        timestamp: new Date(),
+      };
+    } catch (error) {
+      return {
+        ticketId,
+        name: "Unknown",
+        organization: "N/A",
+        groupSize: 1,
+        scansUsed: 0,
+        maxScans: 4,
+        valid: false,
+        message: "Invalid ticket or verification failed",
+        timestamp: new Date(),
+      };
+    }
+  };
+
   const handleExport = async (format: string, filter: string) => {
     try {
       const url = `/api/admin/forms/${formId}/export?format=${format}&filter=${filter}`;
@@ -168,12 +211,15 @@ export default function FormDetails({ formId, onBack }: FormDetailsProps) {
       </Button>
 
       <Tabs defaultValue="registrations">
-        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+        <TabsList className="grid w-full max-w-3xl grid-cols-4">
           <TabsTrigger value="registrations" data-testid="tab-form-registrations">
             Registrations
           </TabsTrigger>
           <TabsTrigger value="generate" data-testid="tab-form-generate">
             Generate QR
+          </TabsTrigger>
+          <TabsTrigger value="scan" data-testid="tab-form-scan">
+            Scan Entry
           </TabsTrigger>
           <TabsTrigger value="export" data-testid="tab-form-export">
             Export
@@ -193,6 +239,12 @@ export default function FormDetails({ formId, onBack }: FormDetailsProps) {
           <QRGenerator
             registrations={registrations}
             onGenerate={handleGenerateQR}
+          />
+        </TabsContent>
+
+        <TabsContent value="scan">
+          <QRScanner
+            onScan={handleVerifyScan}
           />
         </TabsContent>
 
