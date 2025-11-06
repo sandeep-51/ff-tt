@@ -40,3 +40,29 @@ export const adminLoginSchema = z.object({
 });
 
 export type AdminLogin = z.infer<typeof adminLoginSchema>;
+
+// Form settings schema
+export const formSettingsSchema = z.object({
+  title: z.string().min(1, "Title is required"),
+  subtitle: z.string().optional(),
+  logoUrl: z.string().optional(),
+  watermarkUrl: z.string().optional(),
+  customLinks: z.array(z.object({
+    label: z.string(),
+    url: z.string().url(),
+  })).optional(),
+  showQrInForm: z.boolean().default(false),
+});
+
+export type FormSettings = z.infer<typeof formSettingsSchema>;
+
+export interface FormSettingsData {
+  id: number;
+  title: string;
+  subtitle: string | null;
+  logoUrl: string | null;
+  watermarkUrl: string | null;
+  customLinks: string | null;
+  showQrInForm: boolean;
+  updatedAt: string;
+}

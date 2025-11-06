@@ -3,12 +3,15 @@ import { createServer, type Server } from "http";
 import express from "express";
 import session from "express-session";
 import QRCode from "qrcode";
+import multer from "multer";
+import path from "path";
+import fs from "fs";
 import { storage } from "./storage";
-import { insertRegistrationSchema, adminLoginSchema } from "@shared/schema";
+import { insertRegistrationSchema, adminLoginSchema, formSettingsSchema } from "@shared/schema";
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
 
-const ADMIN_PASSWORD = process.env.ADMIN_PASS || "admin123";
+const ADMIN_PASSWORD = process.env.ADMIN_PASS || "K25KN@FreeFire2024";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
 // Extend session data
@@ -18,7 +21,40 @@ declare module "express-session" {
   }
 }
 
+// Configure multer for file uploads
+const uploadDir = path.join(process.cwd(), "attached_assets", "uploads");
+if (!fs.existsSync(uploadDir)) {
+  fs.mkdirSync(uploadDir, { recursive: true });
+}
+
+const fileStorage = multer.diskStorage({
+  destination: (req, file, cb) => {
+    cb(null, uploadDir);
+  },
+  filename: (req, file, cb) => {
+    const uniqueSuffix = Date.now() + "-" + Math.round(Math.random() * 1e9);
+    cb(null, uniqueSuffix + path.extname(file.originalname));
+  },
+});
+
+const upload = multer({
+  storage: fileStorage,
+  limits: { fileSize: 5 * 1024 * 1024 },
+  fileFilter: (req, file, cb) => {
+    const allowedTypes = /jpeg|jpg|png|gif|webp/;
+    const extname = allowedTypes.test(path.extname(file.originalname).toLowerCase());
+    const mimetype = allowedTypes.test(file.mimetype);
+    if (mimetype && extname) {
+      return cb(null, true);
+    }
+    cb(new Error("Only image files are allowed"));
+  },
+});
+
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Serve uploaded files
+  app.use("/attached_assets/uploads", express.static(uploadDir));
+
   // Session middleware
   app.use(
     session({
@@ -79,6 +115,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Verification failed" });
+    }
+  });
+
+  // GET /api/form-settings - Get form settings (public)
+  app.get("/api/form-settings", async (req, res) => {
+    try {
+      const settings = await storage.getFormSettings();
+      res.json(settings || {
+        title: "Event Registration",
+        subtitle: "Register now to receive your secure QR-based entry pass",
+        customLinks: [],
+        showQrInForm: false,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch form settings" });
     }
   });
 
@@ -273,6 +324,37 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Export failed" });
+    }
+  });
+
+  // PUT /api/admin/form-settings - Update form settings
+  app.put("/api/admin/form-settings", requireAdmin, express.json(), async (req, res) => {
+    try {
+      const validated = formSettingsSchema.parse(req.body);
+      const success = await storage.updateFormSettings(validated);
+      
+      if (success) {
+        const updated = await storage.getFormSettings();
+        res.json({ success: true, settings: updated });
+      } else {
+        res.status(500).json({ error: "Failed to update form settings" });
+      }
+    } catch (error: any) {
+      res.status(400).json({ error: error.message || "Invalid form settings data" });
+    }
+  });
+
+  // POST /api/admin/upload-image - Upload image for form
+  app.post("/api/admin/upload-image", requireAdmin, upload.single("image"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No image file provided" });
+      }
+
+      const imageUrl = `/attached_assets/uploads/${req.file.filename}`;
+      res.json({ success: true, imageUrl });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Image upload failed" });
     }
   });
 

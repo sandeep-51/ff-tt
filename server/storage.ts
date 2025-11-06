@@ -13,6 +13,8 @@ export interface IStorage {
     totalEntries: number;
     activeRegistrations: number;
   }>;
+  getFormSettings(): Promise<any>;
+  updateFormSettings(settings: any): Promise<boolean>;
 }
 
 export class SqliteStorage implements IStorage {
@@ -38,6 +40,14 @@ export class SqliteStorage implements IStorage {
 
   async getStats() {
     return ticketDb.getStats();
+  }
+
+  async getFormSettings() {
+    return ticketDb.getFormSettings();
+  }
+
+  async updateFormSettings(settings: any) {
+    return ticketDb.updateFormSettings(settings);
   }
 }
 
