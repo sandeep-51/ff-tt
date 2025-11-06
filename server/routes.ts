@@ -255,6 +255,66 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/admin/forms/:formId/registrations - Get registrations for specific form
+  app.get("/api/admin/forms/:formId/registrations", requireAdmin, async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const registrations = await storage.getRegistrationsByFormId(formId);
+      res.json(registrations);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch form registrations" });
+    }
+  });
+
+  // GET /api/admin/forms/:formId/stats - Get stats for specific form
+  app.get("/api/admin/forms/:formId/stats", requireAdmin, async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const stats = await storage.getFormStats(formId);
+      res.json(stats);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch form stats" });
+    }
+  });
+
+  // GET /api/admin/forms/:formId/export - Export data for specific form
+  app.get("/api/admin/forms/:formId/export", requireAdmin, async (req, res) => {
+    try {
+      const formId = parseInt(req.params.formId);
+      const format = req.query.format as string || "csv";
+      const filter = req.query.filter as string || "all";
+
+      let registrations = await storage.getRegistrationsByFormId(formId);
+
+      // Apply filter
+      if (filter === "active") {
+        registrations = registrations.filter(r => r.status === "active" || r.status === "checked-in");
+      } else if (filter === "exhausted") {
+        registrations = registrations.filter(r => r.status === "exhausted");
+      }
+
+      if (format === "csv") {
+        const csv = storage.exportToCSV(registrations);
+        res.setHeader("Content-Type", "text/csv");
+        res.setHeader("Content-Disposition", `attachment; filename=form-${formId}-registrations.csv`);
+        res.send(csv);
+      } else if (format === "json") {
+        res.setHeader("Content-Type", "application/json");
+        res.setHeader("Content-Disposition", `attachment; filename=form-${formId}-registrations.json`);
+        res.json(registrations);
+      } else if (format === "pdf") {
+        const pdf = await storage.exportToPDF(registrations);
+        res.setHeader("Content-Type", "application/pdf");
+        res.setHeader("Content-Disposition", `attachment; filename=form-${formId}-registrations.pdf`);
+        res.send(pdf);
+      } else {
+        res.status(400).json({ error: "Invalid format" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to export form data" });
+    }
+  });
+
   // GET /api/admin/export - Export data
   app.get("/api/admin/export", requireAdmin, async (req, res) => {
     try {
@@ -462,12 +522,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post("/api/admin/upload-image", requireAdmin, upload.single("image"), async (req, res) => {
     try {
       if (!req.file) {
+        console.error("No file in request");
         return res.status(400).json({ error: "No image file provided" });
       }
 
       const imageUrl = `/attached_assets/uploads/${req.file.filename}`;
+      console.log("Image uploaded successfully:", imageUrl);
       res.json({ success: true, imageUrl });
     } catch (error: any) {
+      console.error("Image upload error:", error);
       res.status(500).json({ error: error.message || "Image upload failed" });
     }
   });

@@ -1,0 +1,213 @@
+
+import { Button } from "@/components/ui/button";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { ArrowLeft } from "lucide-react";
+import RegistrationsTable, { type Registration } from "./RegistrationsTable";
+import QRGenerator from "./QRGenerator";
+import ExportData from "./ExportData";
+import { useQuery } from "@tanstack/react-query";
+import { useToast } from "@/hooks/use-toast";
+import { queryClient, apiRequest } from "@/lib/queryClient";
+
+interface FormDetailsProps {
+  formId: number;
+  onBack: () => void;
+}
+
+export default function FormDetails({ formId, onBack }: FormDetailsProps) {
+  const { toast } = useToast();
+
+  // Fetch registrations for this specific form
+  const { data: registrations = [], refetch: refetchRegistrations } = useQuery<Registration[]>({
+    queryKey: [`/api/admin/forms/${formId}/registrations`],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/forms/${formId}/registrations`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch registrations");
+      return response.json();
+    },
+  });
+
+  // Fetch stats for this form
+  const { data: stats, refetch: refetchStats } = useQuery<{
+    totalRegistrations: number;
+    qrCodesGenerated: number;
+    totalEntries: number;
+    activeRegistrations: number;
+  }>({
+    queryKey: [`/api/admin/forms/${formId}/stats`],
+    queryFn: async () => {
+      const response = await fetch(`/api/admin/forms/${formId}/stats`, {
+        credentials: "include",
+      });
+      if (!response.ok) throw new Error("Failed to fetch stats");
+      return response.json();
+    },
+  });
+
+  const handleGenerateQR = async (id: string) => {
+    try {
+      const response = await apiRequest("POST", `/api/admin/generate-qr/${id}`, {});
+      const data = await response.json();
+
+      toast({
+        title: "QR Code Generated",
+        description: `QR code created for registration ${id}`,
+      });
+
+      refetchRegistrations();
+      refetchStats();
+    } catch (error: any) {
+      toast({
+        title: "Generation Failed",
+        description: error.message || "Failed to generate QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleDeleteRegistration = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/registrations/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete registration");
+      }
+
+      toast({
+        title: "Success",
+        description: "Registration deleted successfully",
+      });
+
+      refetchRegistrations();
+      refetchStats();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete registration",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRevokeQR = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/revoke-qr/${id}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to revoke QR code");
+      }
+
+      toast({
+        title: "Success",
+        description: "QR code revoked successfully",
+      });
+
+      refetchRegistrations();
+      refetchStats();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleExport = async (format: string, filter: string) => {
+    try {
+      const url = `/api/admin/forms/${formId}/export?format=${format}&filter=${filter}`;
+      const response = await fetch(url, {
+        credentials: "include",
+      });
+
+      if (!response.ok) {
+        throw new Error("Export failed");
+      }
+
+      const blob = await response.blob();
+      const downloadUrl = window.URL.createObjectURL(blob);
+      const link = document.createElement("a");
+      link.href = downloadUrl;
+
+      const extension = format === "pdf" ? "pdf" : format === "json" ? "json" : "csv";
+      link.download = `form-${formId}-registrations-${Date.now()}.${extension}`;
+
+      document.body.appendChild(link);
+      link.click();
+      document.body.removeChild(link);
+      window.URL.revokeObjectURL(downloadUrl);
+
+      toast({
+        title: "Export Successful",
+        description: `Data exported as ${format.toUpperCase()}`,
+      });
+    } catch (error: any) {
+      toast({
+        title: "Export Failed",
+        description: error.message || "Failed to export data",
+        variant: "destructive",
+      });
+    }
+  };
+
+  return (
+    <div className="space-y-6">
+      <Button
+        variant="outline"
+        onClick={onBack}
+        data-testid="button-back-to-forms"
+      >
+        <ArrowLeft className="h-4 w-4 mr-2" />
+        Back to Forms
+      </Button>
+
+      <Tabs defaultValue="registrations">
+        <TabsList className="grid w-full max-w-2xl grid-cols-3">
+          <TabsTrigger value="registrations" data-testid="tab-form-registrations">
+            Registrations
+          </TabsTrigger>
+          <TabsTrigger value="generate" data-testid="tab-form-generate">
+            Generate QR
+          </TabsTrigger>
+          <TabsTrigger value="export" data-testid="tab-form-export">
+            Export
+          </TabsTrigger>
+        </TabsList>
+
+        <TabsContent value="registrations">
+          <RegistrationsTable
+            registrations={registrations}
+            onGenerateQR={handleGenerateQR}
+            onDeleteRegistration={handleDeleteRegistration}
+            onRevokeQR={handleRevokeQR}
+          />
+        </TabsContent>
+
+        <TabsContent value="generate">
+          <QRGenerator
+            registrations={registrations}
+            onGenerate={handleGenerateQR}
+          />
+        </TabsContent>
+
+        <TabsContent value="export">
+          <ExportData
+            stats={stats || {
+              totalRegistrations: 0,
+              qrCodesGenerated: 0,
+              totalEntries: 0,
+              activeRegistrations: 0,
+            }}
+            onExport={handleExport}
+          />
+        </TabsContent>
+      </Tabs>
+    </div>
+  );
+}

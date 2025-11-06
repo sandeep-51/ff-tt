@@ -23,6 +23,8 @@ export interface IStorage {
   deleteEventForm(id: number): Promise<boolean>;
   deleteRegistration(id: string): Promise<boolean>;
   revokeQRCode(id: string): Promise<boolean>;
+  getRegistrationsByFormId(formId: number): Promise<Registration[]>;
+  getFormStats(formId: number): Promise<any>;
 }
 
 export class SqliteStorage implements IStorage {
@@ -36,6 +38,20 @@ export class SqliteStorage implements IStorage {
 
   async getAllRegistrations(): Promise<Registration[]> {
     return ticketDb.getAllRegistrations();
+  }
+
+  async getRegistrationsByFormId(formId: number): Promise<Registration[]> {
+    return this.db.getRegistrationsByFormId(formId);
+  }
+
+  async getFormStats(formId: number) {
+    const registrations = await this.getRegistrationsByFormId(formId);
+    return {
+      totalRegistrations: registrations.length,
+      qrCodesGenerated: registrations.filter(r => r.hasQR).length,
+      totalEntries: registrations.reduce((sum, r) => sum + r.scans, 0),
+      activeRegistrations: registrations.filter(r => r.status === "active" || r.status === "checked-in").length,
+    };
   }
 
   async generateQRCode(id: string, qrCodeData: string): Promise<boolean> {

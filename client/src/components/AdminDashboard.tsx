@@ -10,6 +10,7 @@ import QRGenerator from "./QRGenerator";
 import QRScanner from "./QRScanner";
 import ExportData from "./ExportData";
 import FormsList from "./FormsList";
+import FormDetails from "./FormDetails";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -18,6 +19,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const { toast } = useToast();
   const [activeTab, setActiveTab] = useState("forms");
+  const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
 
   // Fetch all registrations
   const { data: registrations = [], refetch: refetchRegistrations } = useQuery<Registration[]>({
@@ -251,7 +253,14 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
           </TabsList>
 
           <TabsContent value="forms">
-            <FormsList />
+            {selectedFormId === null ? (
+              <FormsList onFormClick={(formId) => setSelectedFormId(formId)} />
+            ) : (
+              <FormDetails
+                formId={selectedFormId}
+                onBack={() => setSelectedFormId(null)}
+              />
+            )}
           </TabsContent>
 
           <TabsContent value="registrations">
@@ -261,7 +270,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 handleGenerateQR(id);
                 setActiveTab("generate");
               }}
-              onDelete={handleDeleteRegistration}
+              onDeleteRegistration={handleDeleteRegistration}
               onRevokeQR={handleRevokeQR}
             />
           </TabsContent>

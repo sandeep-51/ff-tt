@@ -3,7 +3,7 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { Button } from "@/components/ui/button";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Plus, Edit, Globe, EyeOff, Trash2, Loader2 } from "lucide-react";
+import { Plus, Edit, Globe, EyeOff, Trash2, Loader2, Eye } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import FormBuilder from "./FormBuilder";
@@ -20,7 +20,11 @@ import {
   AlertDialogTrigger,
 } from "@/components/ui/alert-dialog";
 
-export default function FormsList() {
+interface FormsListProps {
+  onFormClick?: (formId: number) => void;
+}
+
+export default function FormsList({ onFormClick }: FormsListProps) {
   const { toast } = useToast();
   const [editingFormId, setEditingFormId] = useState<number | null>(null);
   const [creatingNew, setCreatingNew] = useState(false);
@@ -143,7 +147,9 @@ export default function FormsList() {
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
                     <div className="flex items-center gap-2">
-                      <CardTitle>{form.title}</CardTitle>
+                      <CardTitle onClick={() => onFormClick?.(form.id)} data-testid={`form-title-${form.id}`} className="cursor-pointer">
+                        {form.title}
+                      </CardTitle>
                       {form.isPublished ? (
                         <Badge variant="default" data-testid={`badge-published-${form.id}`}>
                           <Globe className="h-3 w-3 mr-1" />
@@ -217,6 +223,14 @@ export default function FormsList() {
                         </AlertDialogFooter>
                       </AlertDialogContent>
                     </AlertDialog>
+                    <Button
+                      variant="outline"
+                      size="icon"
+                      onClick={() => onFormClick?.(form.id)}
+                      data-testid={`button-view-form-${form.id}`}
+                    >
+                      <Eye className="h-4 w-4" />
+                    </Button>
                   </div>
                 </div>
               </CardHeader>

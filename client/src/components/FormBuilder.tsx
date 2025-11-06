@@ -257,16 +257,24 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                     <FormLabel>Hero Image</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImageUpload("heroImageUrl", file);
-                          }}
-                          disabled={uploadingField === "heroImageUrl"}
-                          data-testid="input-hero-image"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                await handleImageUpload("heroImageUrl", file);
+                                e.target.value = '';
+                              }
+                            }}
+                            disabled={uploadingField === "heroImageUrl"}
+                            data-testid="input-hero-image"
+                          />
+                          {uploadingField === "heroImageUrl" && (
+                            <Loader2 className="h-4 w-4 animate-spin self-center" />
+                          )}
+                        </div>
                         {field.value && (
                           <div className="relative w-full h-40 rounded-md overflow-hidden border">
                             <img src={field.value} alt="Hero" className="w-full h-full object-cover" />
@@ -288,16 +296,24 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                     <FormLabel>Watermark Image</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImageUpload("watermarkUrl", file);
-                          }}
-                          disabled={uploadingField === "watermarkUrl"}
-                          data-testid="input-watermark"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                await handleImageUpload("watermarkUrl", file);
+                                e.target.value = '';
+                              }
+                            }}
+                            disabled={uploadingField === "watermarkUrl"}
+                            data-testid="input-watermark"
+                          />
+                          {uploadingField === "watermarkUrl" && (
+                            <Loader2 className="h-4 w-4 animate-spin self-center" />
+                          )}
+                        </div>
                         {field.value && (
                           <div className="relative w-40 h-40 rounded-md overflow-hidden border bg-card">
                             <img src={field.value} alt="Watermark" className="w-full h-full object-contain p-2" />
@@ -319,16 +335,24 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                     <FormLabel>Logo</FormLabel>
                     <FormControl>
                       <div className="space-y-2">
-                        <Input
-                          type="file"
-                          accept="image/*"
-                          onChange={(e) => {
-                            const file = e.target.files?.[0];
-                            if (file) handleImageUpload("logoUrl", file);
-                          }}
-                          disabled={uploadingField === "logoUrl"}
-                          data-testid="input-logo"
-                        />
+                        <div className="flex gap-2">
+                          <Input
+                            type="file"
+                            accept="image/*"
+                            onChange={async (e) => {
+                              const file = e.target.files?.[0];
+                              if (file) {
+                                await handleImageUpload("logoUrl", file);
+                                e.target.value = '';
+                              }
+                            }}
+                            disabled={uploadingField === "logoUrl"}
+                            data-testid="input-logo"
+                          />
+                          {uploadingField === "logoUrl" && (
+                            <Loader2 className="h-4 w-4 animate-spin self-center" />
+                          )}
+                        </div>
                         {field.value && (
                           <div className="relative w-32 h-32 rounded-md overflow-hidden border bg-card">
                             <img src={field.value} alt="Logo" className="w-full h-full object-contain p-2" />
