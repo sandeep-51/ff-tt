@@ -20,12 +20,12 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const [activeTab, setActiveTab] = useState("forms");
 
   // Fetch all registrations
-  const { data: registrations = [], refetch } = useQuery<Registration[]>({
+  const { data: registrations = [], refetch: refetchRegistrations } = useQuery<Registration[]>({
     queryKey: ["/api/admin/registrations"],
   });
 
   // Fetch stats
-  const { data: stats } = useQuery<{
+  const { data: stats, refetch: refetchStats } = useQuery<{
     totalRegistrations: number;
     qrCodesGenerated: number;
     totalEntries: number;
@@ -53,7 +53,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     try {
       const response = await apiRequest("POST", `/api/admin/generate-qr/${id}`, {});
       const data = await response.json();
-      
+
       toast({
         title: "QR Code Generated",
         description: `QR code created for registration ${id}`,
@@ -76,7 +76,7 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       const response = await fetch(`/api/verify?t=${ticketId}`, {
         credentials: "include",
       });
-      
+
       if (!response.ok) {
         throw new Error("Verification failed");
       }
@@ -113,6 +113,59 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
     }
   };
 
+  const handleDeleteRegistration = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/registrations/${id}`, {
+        method: "DELETE",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to delete registration");
+      }
+
+      toast({
+        title: "Success",
+        description: "Registration deleted successfully",
+      });
+
+      refetchRegistrations();
+      refetchStats();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to delete registration",
+        variant: "destructive",
+      });
+    }
+  };
+
+  const handleRevokeQR = async (id: string) => {
+    try {
+      const response = await fetch(`/api/admin/revoke-qr/${id}`, {
+        method: "POST",
+      });
+
+      if (!response.ok) {
+        throw new Error("Failed to revoke QR code");
+      }
+
+      toast({
+        title: "Success",
+        description: "QR code revoked successfully",
+      });
+
+      refetchRegistrations();
+      refetchStats();
+    } catch (error) {
+      toast({
+        title: "Error",
+        description: "Failed to revoke QR code",
+        variant: "destructive",
+      });
+    }
+  };
+
+
   const handleExport = async (format: string, filter: string) => {
     try {
       const url = `/api/admin/export?format=${format}&filter=${filter}`;
@@ -129,10 +182,10 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       const downloadUrl = window.URL.createObjectURL(blob);
       const link = document.createElement("a");
       link.href = downloadUrl;
-      
+
       const extension = format === "pdf" ? "pdf" : format === "json" ? "json" : "csv";
       link.download = `registrations-${Date.now()}.${extension}`;
-      
+
       document.body.appendChild(link);
       link.click();
       document.body.removeChild(link);
@@ -208,6 +261,8 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
                 handleGenerateQR(id);
                 setActiveTab("generate");
               }}
+              onDelete={handleDeleteRegistration}
+              onRevokeQR={handleRevokeQR}
             />
           </TabsContent>
 

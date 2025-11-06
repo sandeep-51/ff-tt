@@ -11,7 +11,18 @@ import {
   TableHeader,
   TableRow,
 } from "@/components/ui/table";
-import { Search, QrCode, CheckCircle2, XCircle, Clock } from "lucide-react";
+import {
+  AlertDialog,
+  AlertDialogAction,
+  AlertDialogCancel,
+  AlertDialogContent,
+  AlertDialogDescription,
+  AlertDialogFooter,
+  AlertDialogHeader,
+  AlertDialogTitle,
+  AlertDialogTrigger,
+} from "@/components/ui/alert-dialog";
+import { Search, QrCode, CheckCircle2, XCircle, Clock, Trash2, Ban } from "lucide-react";
 
 export interface Registration {
   id: string;
@@ -31,11 +42,15 @@ export interface Registration {
 interface RegistrationsTableProps {
   registrations?: Registration[];
   onGenerateQR?: (id: string) => void;
+  onDeleteRegistration?: (id: string) => void;
+  onRevokeQR?: (id: string) => void;
 }
 
 export default function RegistrationsTable({
   registrations = [],
   onGenerateQR,
+  onDeleteRegistration,
+  onRevokeQR,
 }: RegistrationsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
 
@@ -140,20 +155,80 @@ export default function RegistrationsTable({
                           {getStatusBadge(reg.status, reg.scans, reg.maxScans)}
                         </TableCell>
                         <TableCell className="text-right">
-                          {!reg.hasQR && (
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              onClick={() => {
-                                console.log(`Generate QR for ${reg.id}`);
-                                onGenerateQR?.(reg.id);
-                              }}
-                              data-testid={`button-generate-qr-${index}`}
-                            >
-                              <QrCode className="h-4 w-4 mr-2" />
-                              Generate QR
-                            </Button>
-                          )}
+                          <div className="flex items-center justify-end gap-2">
+                            {!reg.hasQR && (
+                              <Button
+                                size="sm"
+                                variant="outline"
+                                onClick={() => {
+                                  console.log(`Generate QR for ${reg.id}`);
+                                  onGenerateQR?.(reg.id);
+                                }}
+                                data-testid={`button-generate-qr-${index}`}
+                              >
+                                <QrCode className="h-4 w-4 mr-2" />
+                                Generate QR
+                              </Button>
+                            )}
+                            {reg.hasQR && (
+                              <AlertDialog>
+                                <AlertDialogTrigger asChild>
+                                  <Button
+                                    size="sm"
+                                    variant="outline"
+                                    data-testid={`button-revoke-qr-${index}`}
+                                  >
+                                    <Ban className="h-4 w-4 mr-2" />
+                                    Revoke QR
+                                  </Button>
+                                </AlertDialogTrigger>
+                                <AlertDialogContent>
+                                  <AlertDialogHeader>
+                                    <AlertDialogTitle>Revoke QR Code?</AlertDialogTitle>
+                                    <AlertDialogDescription>
+                                      This will revoke the QR code for {reg.name} ({reg.id}). The registration will return to pending status and scans will be reset.
+                                    </AlertDialogDescription>
+                                  </AlertDialogHeader>
+                                  <AlertDialogFooter>
+                                    <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                    <AlertDialogAction
+                                      onClick={() => onRevokeQR?.(reg.id)}
+                                    >
+                                      Revoke
+                                    </AlertDialogAction>
+                                  </AlertDialogFooter>
+                                </AlertDialogContent>
+                              </AlertDialog>
+                            )}
+                            <AlertDialog>
+                              <AlertDialogTrigger asChild>
+                                <Button
+                                  size="sm"
+                                  variant="destructive"
+                                  data-testid={`button-delete-${index}`}
+                                >
+                                  <Trash2 className="h-4 w-4" />
+                                </Button>
+                              </AlertDialogTrigger>
+                              <AlertDialogContent>
+                                <AlertDialogHeader>
+                                  <AlertDialogTitle>Delete Registration?</AlertDialogTitle>
+                                  <AlertDialogDescription>
+                                    This will permanently delete the registration for {reg.name} ({reg.id}). This action cannot be undone.
+                                  </AlertDialogDescription>
+                                </AlertDialogHeader>
+                                <AlertDialogFooter>
+                                  <AlertDialogCancel>Cancel</AlertDialogCancel>
+                                  <AlertDialogAction
+                                    onClick={() => onDeleteRegistration?.(reg.id)}
+                                    className="bg-destructive text-destructive-foreground hover:bg-destructive/90"
+                                  >
+                                    Delete
+                                  </AlertDialogAction>
+                                </AlertDialogFooter>
+                              </AlertDialogContent>
+                            </AlertDialog>
+                          </div>
                         </TableCell>
                       </TableRow>
                     ))

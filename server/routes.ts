@@ -222,6 +222,39 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // DELETE /api/admin/registrations/:id - Delete a registration
+  app.delete("/api/admin/registrations/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.deleteRegistration(id);
+      
+      if (success) {
+        res.json({ success: true, message: "Registration deleted successfully" });
+      } else {
+        res.status(404).json({ error: "Registration not found" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to delete registration" });
+    }
+  });
+
+  // POST /api/admin/revoke-qr/:id - Revoke QR code for a registration
+  app.post("/api/admin/revoke-qr/:id", requireAdmin, async (req, res) => {
+    try {
+      const { id } = req.params;
+      const success = await storage.revokeQRCode(id);
+      
+      if (success) {
+        const updatedReg = await storage.getRegistration(id);
+        res.json({ success: true, registration: updatedReg, message: "QR code revoked successfully" });
+      } else {
+        res.status(404).json({ error: "Registration not found" });
+      }
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to revoke QR code" });
+    }
+  });
+
   // GET /api/admin/export - Export data
   app.get("/api/admin/export", requireAdmin, async (req, res) => {
     try {

@@ -221,6 +221,24 @@ export class TicketDatabase {
     }));
   }
 
+  // Delete registration
+  deleteRegistration(id: string): boolean {
+    const stmt = db.prepare("DELETE FROM registrations WHERE id = ?");
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  // Revoke QR code
+  revokeQRCode(id: string): boolean {
+    const stmt = db.prepare(`
+      UPDATE registrations
+      SET hasQR = 0, qrCodeData = NULL, status = 'pending', scans = 0
+      WHERE id = ?
+    `);
+    const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
   // Statistics
   getStats() {
     const totalRegs = db.prepare("SELECT COUNT(*) as count FROM registrations").get() as { count: number };

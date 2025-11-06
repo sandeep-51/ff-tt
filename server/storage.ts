@@ -21,6 +21,8 @@ export interface IStorage {
   publishEventForm(id: number): Promise<boolean>;
   unpublishEventForm(id: number): Promise<boolean>;
   deleteEventForm(id: number): Promise<boolean>;
+  deleteRegistration(id: string): Promise<boolean>;
+  revokeQRCode(id: string): Promise<boolean>;
 }
 
 export class SqliteStorage implements IStorage {
@@ -46,6 +48,14 @@ export class SqliteStorage implements IStorage {
 
   async getStats() {
     return ticketDb.getStats();
+  }
+
+  async deleteRegistration(id: string): Promise<boolean> {
+    return ticketDb.deleteRegistration(id);
+  }
+
+  async revokeQRCode(id: string): Promise<boolean> {
+    return ticketDb.revokeQRCode(id);
   }
 
   async createEventForm(data: any) {
