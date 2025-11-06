@@ -1,15 +1,5 @@
-import { useState } from "react";
-import { Switch, Route } from "wouter";
-import { queryClient } from "./lib/queryClient";
-import { QueryClientProvider } from "@tanstack/react-query";
-import { Toaster } from "@/components/ui/toaster";
-import { TooltipProvider } from "@/components/ui/tooltip";
-import NotFound from "@/pages/not-found";
-import RegistrationForm from "@/components/RegistrationForm";
-import AdminLogin from "@/components/AdminLogin";
-import AdminDashboard from "@/components/AdminDashboard";
-import heroImage from "@assets/generated_images/Event_venue_hero_image_9ef8bf32.png";
-import type { Registration } from "@/components/RegistrationsTable";
+import AdminDashboard from "../AdminDashboard";
+import type { Registration } from "../RegistrationsTable";
 
 // TODO: Remove mock functionality
 const mockRegistrations: Registration[] = [
@@ -87,43 +77,11 @@ const mockRegistrations: Registration[] = [
   },
 ];
 
-function Router() {
-  const [isAdminLoggedIn, setIsAdminLoggedIn] = useState(false);
-
+export default function AdminDashboardExample() {
   return (
-    <Switch>
-      <Route path="/">
-        <RegistrationForm
-          heroImage={heroImage}
-          onSubmit={(data) => console.log("Registration submitted:", data)}
-        />
-      </Route>
-
-      <Route path="/admin">
-        {isAdminLoggedIn ? (
-          <AdminDashboard
-            registrations={mockRegistrations}
-            onLogout={() => setIsAdminLoggedIn(false)}
-          />
-        ) : (
-          <AdminLogin onLogin={() => setIsAdminLoggedIn(true)} />
-        )}
-      </Route>
-
-      <Route component={NotFound} />
-    </Switch>
+    <AdminDashboard
+      registrations={mockRegistrations}
+      onLogout={() => console.log("Logout")}
+    />
   );
 }
-
-function App() {
-  return (
-    <QueryClientProvider client={queryClient}>
-      <TooltipProvider>
-        <Toaster />
-        <Router />
-      </TooltipProvider>
-    </QueryClientProvider>
-  );
-}
-
-export default App;
