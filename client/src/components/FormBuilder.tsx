@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon, Type, Video, List, GripVertical, Mail, Phone, AlignLeft, DollarSign } from "lucide-react";
+import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon, Type, Video, List, GripVertical, Mail, Phone, AlignLeft, DollarSign, Copy, ArrowUp, ArrowDown } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { EventForm, CustomField, BaseFieldConfig } from "@shared/schema";
@@ -238,7 +238,51 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
     form.setValue("customFields", fields.filter((_, i) => i !== index));
   };
 
+  const duplicateCustomField = (index: number) => {
+    const fields = form.getValues("customFields") || [];
+    const fieldToDuplicate = fields[index];
+    const duplicatedField: CustomField = {
+      ...fieldToDuplicate,
+      id: `field_${Date.now()}`,
+      label: `${fieldToDuplicate.label} (Copy)`,
+    };
+    form.setValue("customFields", [...fields.slice(0, index + 1), duplicatedField, ...fields.slice(index + 1)]);
+    toast({
+      title: "Field Duplicated",
+      description: "Field has been duplicated successfully",
+    });
+  };
+
+  const moveFieldUp = (index: number) => {
+    if (index === 0) return;
+    const fields = form.getValues("customFields") || [];
+    const newFields = [...fields];
+    [newFields[index - 1], newFields[index]] = [newFields[index], newFields[index - 1]];
+    form.setValue("customFields", newFields);
+  };
+
+  const moveFieldDown = (index: number) => {
+    const fields = form.getValues("customFields") || [];
+    if (index === fields.length - 1) return;
+    const newFields = [...fields];
+    [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+    form.setValue("customFields", newFields);
+  };
+
   const handleSubmit = (data: FormBuilderData) => {
+    // Validate payment fields have payment URLs
+    const paymentFields = data.customFields?.filter(f => f.type === 'payment') || [];
+    const invalidPaymentFields = paymentFields.filter(f => !(f as any).paymentUrl || (f as any).paymentUrl.trim() === '');
+    
+    if (invalidPaymentFields.length > 0) {
+      toast({
+        title: "Validation Error",
+        description: "All payment fields must have a payment link URL. Please fill in the payment URL for all payment fields.",
+        variant: "destructive",
+      });
+      return;
+    }
+    
     saveMutation.mutate(data);
   };
 
@@ -863,6 +907,35 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                     />
                     <Button
                       type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveFieldUp(index)}
+                      disabled={index === 0}
+                      data-testid={`button-move-up-field-${index}`}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveFieldDown(index)}
+                      disabled={index === (form.getValues("customFields") || []).length - 1}
+                      data-testid={`button-move-down-field-${index}`}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => duplicateCustomField(index)}
+                      data-testid={`button-duplicate-field-${index}`}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
                       variant="destructive"
                       size="icon"
                       onClick={() => removeCustomField(index)}
@@ -904,11 +977,17 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               <Button
                 type="button"
                 variant="outline"
-                onClick={() => window.open("/", "_blank")}
+                onClick={() => {
+                  toast({
+                    title: "Preview Tip",
+                    description: "Make sure to save your changes before previewing. The preview shows the last saved version.",
+                  });
+                  setTimeout(() => window.open("/", "_blank"), 500);
+                }}
                 data-testid="button-preview"
               >
                 <Eye className="h-4 w-4 mr-2" />
-                Preview
+                Preview Form
               </Button>
             )}
           </div>

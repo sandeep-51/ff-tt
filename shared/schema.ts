@@ -110,6 +110,7 @@ export interface EventForm {
   title: string;
   subtitle: string | null;
   heroImageUrl: string | null;
+  backgroundImageUrl: string | null;
   watermarkUrl: string | null;
   logoUrl: string | null;
   customLinks: Array<{ label: string; url: string }>;

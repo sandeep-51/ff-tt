@@ -662,16 +662,21 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                               </div>
                             ) : customField.type === "payment" ? (
                               <div className="space-y-3">
-                                {(customField as any).paymentUrl && (
+                                {(customField as any).paymentUrl && (customField as any).paymentUrl.trim() !== '' ? (
                                   <a
                                     href={(customField as any).paymentUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
+                                    data-testid={`button-payment-link-${customField.id}`}
                                   >
                                     <DollarSign className="mr-2 h-4 w-4" />
                                     Proceed to Payment
                                   </a>
+                                ) : (
+                                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
+                                    Payment link not configured. Please contact the event organizer.
+                                  </div>
                                 )}
                                 <div>
                                   <Input
@@ -681,7 +686,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                     value={field.value || ""}
                                     data-testid={`input-custom-${customField.id}`}
                                   />
-                                  {(customField as any).paymentUrl && (
+                                  {(customField as any).paymentUrl && (customField as any).paymentUrl.trim() !== '' && (
                                     <p className="text-xs text-muted-foreground mt-2">
                                       Click the button above to complete payment, then enter your transaction ID here
                                     </p>

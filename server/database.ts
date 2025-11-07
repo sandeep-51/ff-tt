@@ -79,6 +79,15 @@ try {
   }
 }
 
+// Migration: Add backgroundImageUrl column to event_forms if it doesn't exist
+try {
+  db.exec(`ALTER TABLE event_forms ADD COLUMN backgroundImageUrl TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS registrations (
@@ -113,11 +122,15 @@ db.exec(`
     title TEXT NOT NULL,
     subtitle TEXT,
     heroImageUrl TEXT,
+    backgroundImageUrl TEXT,
     watermarkUrl TEXT,
     logoUrl TEXT,
     customLinks TEXT,
     description TEXT,
     customFields TEXT,
+    baseFields TEXT,
+    successMessage TEXT,
+    successTitle TEXT,
     isPublished INTEGER DEFAULT 0,
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
@@ -465,6 +478,7 @@ export class TicketDatabase {
     title: string;
     subtitle?: string;
     heroImageUrl?: string;
+    backgroundImageUrl?: string;
     watermarkUrl?: string;
     logoUrl?: string;
     customLinks?: Array<{ label: string; url: string }>;
@@ -475,14 +489,15 @@ export class TicketDatabase {
     successTitle?: string;
   }) {
     const stmt = this.db.prepare(`
-      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO event_forms (title, subtitle, heroImageUrl, backgroundImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
       data.title,
       data.subtitle || null,
       data.heroImageUrl || null,
+      data.backgroundImageUrl || null,
       data.watermarkUrl || null,
       data.logoUrl || null,
       data.customLinks ? JSON.stringify(data.customLinks) : null,
@@ -498,7 +513,7 @@ export class TicketDatabase {
 
   getEventForm(id: number) {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, backgroundImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE id = ?
     `);
@@ -517,7 +532,7 @@ export class TicketDatabase {
 
   getPublishedForm() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, backgroundImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE isPublished = 1
       ORDER BY updatedAt DESC
@@ -538,7 +553,7 @@ export class TicketDatabase {
 
   getAllEventForms() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, backgroundImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       ORDER BY updatedAt DESC
     `);
@@ -557,6 +572,7 @@ export class TicketDatabase {
     title?: string;
     subtitle?: string;
     heroImageUrl?: string;
+    backgroundImageUrl?: string;
     watermarkUrl?: string;
     logoUrl?: string;
     customLinks?: Array<{ label: string; url: string }>;
@@ -580,6 +596,10 @@ export class TicketDatabase {
     if (data.heroImageUrl !== undefined) {
       updates.push("heroImageUrl = ?");
       values.push(data.heroImageUrl || null);
+    }
+    if (data.backgroundImageUrl !== undefined) {
+      updates.push("backgroundImageUrl = ?");
+      values.push(data.backgroundImageUrl || null);
     }
     if (data.watermarkUrl !== undefined) {
       updates.push("watermarkUrl = ?");
