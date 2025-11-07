@@ -17,7 +17,6 @@ interface FormDetailsProps {
 
 export default function FormDetails({ formId, onBack }: FormDetailsProps) {
   const { toast } = useToast();
-  const navigate = useNavigate();
   const [currentPage, setCurrentPage] = useState(1);
   const pageSize = 50;
 
