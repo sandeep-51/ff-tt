@@ -323,10 +323,22 @@ export class TicketDatabase {
   }
 
   // Get form statistics (number of registrations for a given form)
-  getFormStats(formId: number): { totalRegistrations: number } {
-    const totalRegs = this.db.prepare("SELECT COUNT(*) as count FROM registrations WHERE formId = ?").get({ formId }) as { count: number };
+  getFormStats(formId: number) {
+    const stmt = this.db.prepare(`
+      SELECT 
+        COUNT(*) as totalRegistrations,
+        SUM(CASE WHEN hasQR = 1 THEN 1 ELSE 0 END) as qrCodesGenerated,
+        SUM(scans) as totalEntries,
+        SUM(CASE WHEN status = 'checked-in' THEN 1 ELSE 0 END) as activeRegistrations
+      FROM registrations
+      WHERE formId = ?
+    `);
+    const result = stmt.get(formId) as any;
     return {
-      totalRegistrations: totalRegs.count,
+      totalRegistrations: result?.totalRegistrations || 0,
+      qrCodesGenerated: result?.qrCodesGenerated || 0,
+      totalEntries: result?.totalEntries || 0,
+      activeRegistrations: result?.activeRegistrations || 0,
     };
   }
 

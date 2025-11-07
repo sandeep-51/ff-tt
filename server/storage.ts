@@ -99,6 +99,75 @@ export class SqliteStorage implements IStorage {
   async deleteEventForm(id: number) {
     return ticketDb.deleteEventForm(id);
   }
+
+  exportToCSV(registrations: Registration[]): string {
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At'];
+    const rows = registrations.map(r => [
+      r.id,
+      r.name,
+      r.email,
+      r.phone,
+      r.organization,
+      r.groupSize.toString(),
+      r.scans.toString(),
+      r.maxScans.toString(),
+      r.hasQR ? 'Yes' : 'No',
+      r.status,
+      r.createdAt
+    ]);
+    
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+    ].join('\n');
+    
+    return csvContent;
+  }
+
+  async exportToPDF(registrations: Registration[]): Promise<Buffer> {
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 50 });
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve, reject) => {
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // Title
+      doc.fontSize(20).text('Event Registration Report', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Summary
+      doc.fontSize(14).text('Summary', { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(11);
+      doc.text(`Total Registrations: ${registrations.length}`);
+      doc.text(`QR Codes Generated: ${registrations.filter(r => r.hasQR).length}`);
+      doc.text(`Total Check-ins: ${registrations.filter(r => r.status === 'checked-in').length}`);
+      doc.moveDown(2);
+
+      // Registrations list
+      doc.fontSize(14).text('Registrations', { underline: true });
+      doc.moveDown(0.5);
+
+      registrations.forEach((reg, index) => {
+        if (index > 0) doc.moveDown(1);
+
+        doc.fontSize(11);
+        doc.text(`${index + 1}. ${reg.name} (${reg.id})`);
+        doc.fontSize(9);
+        doc.text(`   Email: ${reg.email}`);
+        doc.text(`   Phone: ${reg.phone}`);
+        doc.text(`   Organization: ${reg.organization}`);
+        doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
+      });
+
+      doc.end();
+    });
+  }
 }
 
 export const storage = new SqliteStorage();
