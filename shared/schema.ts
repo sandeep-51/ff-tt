@@ -62,7 +62,7 @@ export const customFieldSchema = z.object({
   label: z.string().min(1, "Label is required"),
   required: z.boolean().default(false),
   placeholder: z.string().optional(),
-  paymentUrl: z.string().url().optional(), // For payment link field
+  paymentUrl: z.string().optional(), // For payment link field - allow any string, validate as URL in form builder
 });
 
 export type CustomField = z.infer<typeof customFieldSchema>;

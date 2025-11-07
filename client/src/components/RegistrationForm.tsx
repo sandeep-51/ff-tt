@@ -615,7 +615,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                 </Card>
 
                 {customFields.map((customField) => {
-                  const paymentUrl = (customField as any).paymentUrl;
                   return (
                     <FormField
                       key={customField.id}
@@ -663,9 +662,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                               </div>
                             ) : customField.type === "payment" ? (
                               <div className="space-y-3">
-                                {paymentUrl && (
+                                {(customField as any).paymentUrl && (
                                   <a
-                                    href={paymentUrl}
+                                    href={(customField as any).paymentUrl}
                                     target="_blank"
                                     rel="noopener noreferrer"
                                     className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
@@ -679,9 +678,10 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                     type="text"
                                     placeholder={customField.placeholder || "Enter transaction ID after payment"}
                                     {...field}
+                                    value={field.value || ""}
                                     data-testid={`input-custom-${customField.id}`}
                                   />
-                                  {paymentUrl && (
+                                  {(customField as any).paymentUrl && (
                                     <p className="text-xs text-muted-foreground mt-2">
                                       Click the button above to complete payment, then enter your transaction ID here
                                     </p>
@@ -701,6 +701,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                 }
                                 placeholder={customField.placeholder || ""}
                                 {...field}
+                                value={field.value || ""}
                                 data-testid={`input-custom-${customField.id}`}
                               />
                             )}
