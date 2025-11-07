@@ -614,93 +614,103 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                   </CardContent>
                 </Card>
 
-                {customFields.map((customField) => (
-                  <FormField
-                    key={customField.id}
-                    control={form.control}
-                    name={customField.id}
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {customField.label} {customField.required && "*"}
-                        </FormLabel>
-                        <FormControl>
-                          {customField.type === "textarea" ? (
-                            <Textarea
-                              placeholder={customField.placeholder || ""}
-                              {...field}
-                              rows={4}
-                              data-testid={`input-custom-${customField.id}`}
-                            />
-                          ) : customField.type === "photo" ? (
-                            <div className="space-y-2">
-                              <Input
-                                type="file"
-                                accept="image/*"
-                                onChange={async (e) => {
-                                  const file = e.target.files?.[0];
-                                  if (file) {
-                                    await handlePhotoUpload(customField.id, file);
-                                    e.target.value = "";
-                                  }
-                                }}
-                                disabled={uploadingField === customField.id}
+                {customFields.map((customField) => {
+                  const paymentUrl = (customField as any).paymentUrl;
+                  return (
+                    <FormField
+                      key={customField.id}
+                      control={form.control}
+                      name={customField.id}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>
+                            {customField.label} {customField.required && "*"}
+                          </FormLabel>
+                          <FormControl>
+                            {customField.type === "textarea" ? (
+                              <Textarea
+                                placeholder={customField.placeholder || ""}
+                                {...field}
+                                rows={4}
                                 data-testid={`input-custom-${customField.id}`}
                               />
-                              {uploadingField === customField.id && (
-                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                  <span>Uploading...</span>
+                            ) : customField.type === "photo" ? (
+                              <div className="space-y-2">
+                                <Input
+                                  type="file"
+                                  accept="image/*"
+                                  onChange={async (e) => {
+                                    const file = e.target.files?.[0];
+                                    if (file) {
+                                      await handlePhotoUpload(customField.id, file);
+                                      e.target.value = "";
+                                    }
+                                  }}
+                                  disabled={uploadingField === customField.id}
+                                  data-testid={`input-custom-${customField.id}`}
+                                />
+                                {uploadingField === customField.id && (
+                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                    <span>Uploading...</span>
+                                  </div>
+                                )}
+                                {field.value && (
+                                  <div className="relative w-32 h-32 rounded-md overflow-hidden border">
+                                    <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
+                                  </div>
+                                )}
+                              </div>
+                            ) : customField.type === "payment" ? (
+                              <div className="space-y-3">
+                                {paymentUrl && (
+                                  <a
+                                    href={paymentUrl}
+                                    target="_blank"
+                                    rel="noopener noreferrer"
+                                    className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
+                                  >
+                                    <DollarSign className="mr-2 h-4 w-4" />
+                                    Proceed to Payment
+                                  </a>
+                                )}
+                                <div>
+                                  <Input
+                                    type="text"
+                                    placeholder={customField.placeholder || "Enter transaction ID after payment"}
+                                    {...field}
+                                    data-testid={`input-custom-${customField.id}`}
+                                  />
+                                  {paymentUrl && (
+                                    <p className="text-xs text-muted-foreground mt-2">
+                                      Click the button above to complete payment, then enter your transaction ID here
+                                    </p>
+                                  )}
                                 </div>
-                              )}
-                              {field.value && (
-                                <div className="relative w-32 h-32 rounded-md overflow-hidden border">
-                                  <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
-                                </div>
-                              )}
-                            </div>
-                          ) : customField.type === "payment" ? (
-                            <div className="space-y-3">
-                              {(customField as any).paymentUrl && (
-                                <a
-                                  href={(customField as any).paymentUrl}
-                                  target="_blank"
-                                  rel="noopener noreferrer"
-                                  className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
-                                >
-                                  <DollarSign className="mr-2 h-4 w-4" />
-                                  Proceed to Payment
-                                </a>
-                              )}
+                              </div>
+                            ) : (
                               <Input
-                                type="text"
-                                placeholder={customField.placeholder || "Enter transaction ID after payment"}
+                                type={
+                                  customField.type === "email"
+                                    ? "email"
+                                    : customField.type === "phone"
+                                    ? "tel"
+                                    : customField.type === "url"
+                                    ? "url"
+                                    : "text"
+                                }
+                                placeholder={customField.placeholder || ""}
                                 {...field}
                                 data-testid={`input-custom-${customField.id}`}
                               />
-                            </div>
-                          ) : (
-                            <Input
-                              type={
-                                customField.type === "email"
-                                  ? "email"
-                                  : customField.type === "phone"
-                                  ? "tel"
-                                  : customField.type === "url"
-                                  ? "url"
-                                  : "text"
-                              }
-                              placeholder={customField.placeholder || ""}
-                              {...field}
-                              data-testid={`input-custom-${customField.id}`}
-                            />
-                          )}
-                        </FormControl>
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                ))}
+                            )}
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  );
+                })}
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
                   <Shield className="h-4 w-4" />
