@@ -35,6 +35,33 @@ try {
   }
 }
 
+// Migration: Add baseFields column to event_forms if it doesn't exist
+try {
+  db.exec(`ALTER TABLE event_forms ADD COLUMN baseFields TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
+// Migration: Add successMessage column to event_forms if it doesn't exist
+try {
+  db.exec(`ALTER TABLE event_forms ADD COLUMN successMessage TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
+// Migration: Add successTitle column to event_forms if it doesn't exist
+try {
+  db.exec(`ALTER TABLE event_forms ADD COLUMN successTitle TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS registrations (
@@ -100,7 +127,8 @@ export class TicketDatabase {
   // Registration methods
   createRegistration(data: InsertRegistration): Registration {
     const id = this.generateTicketId();
-    const maxScans = data.groupSize * 4;
+    const groupSize = data.groupSize || 1;
+    const maxScans = groupSize * 4;
 
     const stmt = this.db.prepare(`
       INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId, customFieldData)
@@ -109,11 +137,11 @@ export class TicketDatabase {
 
     stmt.run(
       id,
-      data.name,
-      data.email,
-      data.phone,
-      data.organization,
-      data.groupSize,
+      data.name || '',
+      data.email || '',
+      data.phone || '',
+      data.organization || '',
+      groupSize,
       maxScans,
       data.formId || null,
       data.customFieldData ? JSON.stringify(data.customFieldData) : null
@@ -379,10 +407,13 @@ export class TicketDatabase {
     customLinks?: Array<{ label: string; url: string }>;
     description?: string;
     customFields?: any[];
+    baseFields?: any;
+    successMessage?: string;
+    successTitle?: string;
   }) {
     const stmt = this.db.prepare(`
-      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -393,7 +424,10 @@ export class TicketDatabase {
       data.logoUrl || null,
       data.customLinks ? JSON.stringify(data.customLinks) : null,
       data.description || null,
-      data.customFields ? JSON.stringify(data.customFields) : null
+      data.customFields ? JSON.stringify(data.customFields) : null,
+      data.baseFields ? JSON.stringify(data.baseFields) : null,
+      data.successMessage || null,
+      data.successTitle || null
     );
 
     return this.getEventForm(Number(result.lastInsertRowid));
@@ -401,7 +435,7 @@ export class TicketDatabase {
 
   getEventForm(id: number) {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE id = ?
     `);
@@ -414,12 +448,13 @@ export class TicketDatabase {
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
       customFields: row.customFields ? JSON.parse(row.customFields) : [],
+      baseFields: row.baseFields ? JSON.parse(row.baseFields) : undefined,
     };
   }
 
   getPublishedForm() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE isPublished = 1
       ORDER BY updatedAt DESC
@@ -434,12 +469,13 @@ export class TicketDatabase {
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
       customFields: row.customFields ? JSON.parse(row.customFields) : [],
+      baseFields: row.baseFields ? JSON.parse(row.baseFields) : undefined,
     };
   }
 
   getAllEventForms() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, baseFields, successMessage, successTitle, isPublished, createdAt, updatedAt
       FROM event_forms
       ORDER BY updatedAt DESC
     `);
@@ -450,6 +486,7 @@ export class TicketDatabase {
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
       customFields: row.customFields ? JSON.parse(row.customFields) : [],
+      baseFields: row.baseFields ? JSON.parse(row.baseFields) : undefined,
     }));
   }
 
@@ -462,6 +499,9 @@ export class TicketDatabase {
     customLinks?: Array<{ label: string; url: string }>;
     description?: string;
     customFields?: any[];
+    baseFields?: any;
+    successMessage?: string;
+    successTitle?: string;
   }) {
     const updates: string[] = [];
     const values: any[] = [];
@@ -497,6 +537,18 @@ export class TicketDatabase {
     if (data.customFields !== undefined) {
       updates.push("customFields = ?");
       values.push(JSON.stringify(data.customFields));
+    }
+    if (data.baseFields !== undefined) {
+      updates.push("baseFields = ?");
+      values.push(JSON.stringify(data.baseFields));
+    }
+    if (data.successMessage !== undefined) {
+      updates.push("successMessage = ?");
+      values.push(data.successMessage || null);
+    }
+    if (data.successTitle !== undefined) {
+      updates.push("successTitle = ?");
+      values.push(data.successTitle || null);
     }
 
     if (updates.length === 0) return false;

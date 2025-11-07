@@ -21,8 +21,8 @@ import { Checkbox } from "@/components/ui/checkbox";
 import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { EventForm, CustomField } from "@shared/schema";
-import { customFieldSchema } from "@shared/schema";
+import type { EventForm, CustomField, BaseFieldConfig } from "@shared/schema";
+import { customFieldSchema, baseFieldConfigSchema } from "@shared/schema";
 
 const formBuilderSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -36,6 +36,15 @@ const formBuilderSchema = z.object({
     url: z.string().url("Must be a valid URL"),
   })).optional(),
   customFields: z.array(customFieldSchema).optional(),
+  baseFields: z.object({
+    name: baseFieldConfigSchema.optional(),
+    email: baseFieldConfigSchema.optional(),
+    phone: baseFieldConfigSchema.optional(),
+    organization: baseFieldConfigSchema.optional(),
+    groupSize: baseFieldConfigSchema.optional(),
+  }).optional(),
+  successMessage: z.string().optional(),
+  successTitle: z.string().optional(),
 });
 
 type FormBuilderData = z.infer<typeof formBuilderSchema>;
@@ -63,6 +72,15 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       description: "",
       customLinks: [],
       customFields: [],
+      baseFields: {
+        name: { label: "Full Name", placeholder: "John Doe", required: true, enabled: true },
+        email: { label: "Email Address", placeholder: "john.doe@example.com", required: true, enabled: true },
+        phone: { label: "Phone Number", placeholder: "+1 (555) 123-4567", required: true, enabled: true },
+        organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
+        groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
+      },
+      successTitle: "",
+      successMessage: "",
     },
     values: existingForm ? {
       title: existingForm.title,
@@ -73,6 +91,15 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       logoUrl: existingForm.logoUrl || undefined,
       customLinks: existingForm.customLinks || [],
       customFields: existingForm.customFields || [],
+      baseFields: existingForm.baseFields || {
+        name: { label: "Full Name", placeholder: "John Doe", required: true, enabled: true },
+        email: { label: "Email Address", placeholder: "john.doe@example.com", required: true, enabled: true },
+        phone: { label: "Phone Number", placeholder: "+1 (555) 123-4567", required: true, enabled: true },
+        organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
+        groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
+      },
+      successTitle: existingForm.successTitle || undefined,
+      successMessage: existingForm.successMessage || undefined,
     } : undefined,
   });
 
@@ -268,6 +295,129 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                   </FormItem>
                 )}
               />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Success Message</CardTitle>
+              <CardDescription>Customize the message shown after successful form submission</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="successTitle"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Success Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Registration Successful!" {...field} data-testid="input-success-title" />
+                    </FormControl>
+                    <FormDescription>The title shown on the success page (leave empty for default)</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="successMessage"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Success Message</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="Thank you for registering! We will contact you shortly with your QR code."
+                        className="resize-none"
+                        rows={4}
+                        {...field}
+                        data-testid="textarea-success-message"
+                      />
+                    </FormControl>
+                    <FormDescription>The message shown after successful registration (leave empty for default)</FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Form Fields Configuration</CardTitle>
+              <CardDescription>Customize labels, placeholders, and requirements for each field</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-6">
+              {["name", "email", "phone", "organization", "groupSize"].map((fieldName) => (
+                <div key={fieldName} className={`p-4 border-2 rounded-md space-y-4 transition-all ${form.watch(`baseFields.${fieldName}.enabled` as any) ? 'border-primary/30 bg-primary/5' : 'border-muted bg-muted/30 opacity-60'}`}>
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-semibold capitalize text-lg">{fieldName.replace(/([A-Z])/g, ' $1').trim()} Field</h4>
+                    <FormField
+                      control={form.control}
+                      name={`baseFields.${fieldName}.enabled` as any}
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-3 space-y-0">
+                          <FormLabel className="text-sm font-medium">
+                            {field.value ? "✓ Enabled" : "✗ Disabled"}
+                          </FormLabel>
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid={`checkbox-field-${fieldName}-enabled`}
+                              className="h-5 w-5"
+                            />
+                          </FormControl>
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`baseFields.${fieldName}.label` as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Field Label *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter label" {...field} data-testid={`input-field-${fieldName}-label`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`baseFields.${fieldName}.placeholder` as any}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Placeholder</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Enter placeholder" {...field} value={field.value || ""} data-testid={`input-field-${fieldName}-placeholder`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`baseFields.${fieldName}.required` as any}
+                    render={({ field }) => (
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormControl>
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid={`checkbox-field-${fieldName}-required`}
+                          />
+                        </FormControl>
+                        <FormLabel className="text-sm font-normal">Required Field</FormLabel>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+              ))}
             </CardContent>
           </Card>
 

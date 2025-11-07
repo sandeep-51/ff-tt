@@ -20,17 +20,38 @@ import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as Uploa
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { EventForm, CustomField } from "@shared/schema";
+import freeFireBgImage from "@assets/ChatGPT Image Nov 7, 2025, 12_19_25 AM_1762500965547.png";
 
-const buildDynamicSchema = (customFields: CustomField[] = []) => {
-  const baseSchema = {
-    name: z.string().min(2, "Name must be at least 2 characters"),
-    email: z.string().email("Invalid email address"),
-    phone: z.string().min(10, "Phone number must be at least 10 digits"),
-    organization: z.string().min(2, "Organization must be at least 2 characters"),
-    groupSize: z.enum(["1", "2", "3", "4"], {
+const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: EventForm['baseFields']) => {
+  const baseSchema: Record<string, z.ZodTypeAny> = {};
+  
+  // Build base fields schema from configuration
+  if (baseFields?.name?.enabled) {
+    const nameSchema = z.string().min(2, "Name must be at least 2 characters");
+    baseSchema.name = baseFields.name.required ? nameSchema : nameSchema.optional().or(z.literal(""));
+  }
+  
+  if (baseFields?.email?.enabled) {
+    const emailSchema = z.string().email("Invalid email address");
+    baseSchema.email = baseFields.email.required ? emailSchema : emailSchema.optional().or(z.literal(""));
+  }
+  
+  if (baseFields?.phone?.enabled) {
+    const phoneSchema = z.string().min(10, "Phone number must be at least 10 digits");
+    baseSchema.phone = baseFields.phone.required ? phoneSchema : phoneSchema.optional().or(z.literal(""));
+  }
+  
+  if (baseFields?.organization?.enabled) {
+    const orgSchema = z.string().min(2, "Organization must be at least 2 characters");
+    baseSchema.organization = baseFields.organization.required ? orgSchema : orgSchema.optional().or(z.literal(""));
+  }
+  
+  if (baseFields?.groupSize?.enabled) {
+    const groupSizeSchema = z.enum(["1", "2", "3", "4"], {
       required_error: "Please select group size",
-    }),
-  };
+    });
+    baseSchema.groupSize = baseFields.groupSize.required ? groupSizeSchema : groupSizeSchema.optional();
+  }
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
   
@@ -71,22 +92,31 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
   const title = publishedForm?.title || "Event Registration";
   const subtitle = publishedForm?.subtitle || "Register now to receive your secure QR-based entry pass";
-  const heroImage = publishedForm?.heroImageUrl;
+  const heroImage = publishedForm?.heroImageUrl || freeFireBgImage;
   const watermarkUrl = publishedForm?.watermarkUrl;
   const logoUrl = publishedForm?.logoUrl;
   const customLinks = publishedForm?.customLinks || [];
   const customFields = publishedForm?.customFields || [];
+  const successTitle = publishedForm?.successTitle || "Registration Successful!";
+  const successMessage = publishedForm?.successMessage || "Thank you for registering. We've received your information.";
+  const baseFields = publishedForm?.baseFields || {
+    name: { label: "Full Name", placeholder: "John Doe", required: true, enabled: true },
+    email: { label: "Email Address", placeholder: "john.doe@example.com", required: true, enabled: true },
+    phone: { label: "Phone Number", placeholder: "+1 (555) 123-4567", required: true, enabled: true },
+    organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
+    groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
+  };
 
-  const registrationSchema = useMemo(() => buildDynamicSchema(customFields), [customFields]);
+  const registrationSchema = useMemo(() => buildDynamicSchema(customFields, baseFields), [customFields, baseFields]);
   type RegistrationFormData = z.infer<typeof registrationSchema>;
 
-  const defaultValues: any = {
-    name: "",
-    email: "",
-    phone: "",
-    organization: "",
-    groupSize: "1",
-  };
+  const defaultValues: any = {};
+
+  if (baseFields.name?.enabled) defaultValues.name = "";
+  if (baseFields.email?.enabled) defaultValues.email = "";
+  if (baseFields.phone?.enabled) defaultValues.phone = "";
+  if (baseFields.organization?.enabled) defaultValues.organization = "";
+  if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -135,14 +165,16 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
         }
       });
 
-      const response = await apiRequest("POST", "/api/register", {
-        name: data.name,
-        email: data.email,
-        phone: data.phone,
-        organization: data.organization,
-        groupSize: parseInt(data.groupSize),
-        customFieldData,
-      });
+      const payload: any = { customFieldData };
+      
+      // Only include enabled fields
+      if (baseFields.name?.enabled && data.name) payload.name = data.name;
+      if (baseFields.email?.enabled && data.email) payload.email = data.email;
+      if (baseFields.phone?.enabled && data.phone) payload.phone = data.phone;
+      if (baseFields.organization?.enabled && data.organization) payload.organization = data.organization;
+      if (baseFields.groupSize?.enabled && data.groupSize) payload.groupSize = parseInt(data.groupSize);
+
+      const response = await apiRequest("POST", "/api/register", payload);
       return response.json();
     },
     onSuccess: (data) => {
@@ -176,9 +208,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </div>
             </div>
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold">Registration Successful!</h1>
+              <h1 className="text-4xl font-bold">{successTitle}</h1>
               <p className="text-lg text-muted-foreground">
-                Thank you for registering. We've received your information.
+                {successMessage}
               </p>
             </div>
           </div>
@@ -253,9 +285,10 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
           <img
             src={heroImage}
             alt={title}
-            className="w-full h-full object-cover"
+            className="w-full h-full object-cover object-center"
+            style={{ minHeight: '100vh', minWidth: '100vw' }}
           />
-          <div className="absolute inset-0 bg-black/60" />
+          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
         </div>
       )}
 
@@ -327,114 +360,124 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                <FormField
-                  control={form.control}
-                  name="name"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Full Name *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="John Doe"
-                          {...field}
-                          data-testid="input-name"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {baseFields.name?.enabled && baseFields.name && (
+                  <FormField
+                    control={form.control}
+                    name="name"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{baseFields.name?.label} {baseFields.name?.required && "*"}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={baseFields.name?.placeholder || ""}
+                            {...field}
+                            data-testid="input-name"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="email"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Email Address *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="email"
-                          placeholder="john.doe@example.com"
-                          {...field}
-                          data-testid="input-email"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {baseFields.email?.enabled && baseFields.email && (
+                  <FormField
+                    control={form.control}
+                    name="email"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{baseFields.email?.label} {baseFields.email?.required && "*"}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="email"
+                            placeholder={baseFields.email?.placeholder || ""}
+                            {...field}
+                            data-testid="input-email"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="phone"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Phone Number *</FormLabel>
-                      <FormControl>
-                        <Input
-                          type="tel"
-                          placeholder="+1 (555) 123-4567"
-                          {...field}
-                          data-testid="input-phone"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {baseFields.phone?.enabled && baseFields.phone && (
+                  <FormField
+                    control={form.control}
+                    name="phone"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{baseFields.phone?.label} {baseFields.phone?.required && "*"}</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="tel"
+                            placeholder={baseFields.phone?.placeholder || ""}
+                            {...field}
+                            data-testid="input-phone"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="organization"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Organization *</FormLabel>
-                      <FormControl>
-                        <Input
-                          placeholder="Acme Corporation"
-                          {...field}
-                          data-testid="input-organization"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {baseFields.organization?.enabled && baseFields.organization && (
+                  <FormField
+                    control={form.control}
+                    name="organization"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{baseFields.organization?.label} {baseFields.organization?.required && "*"}</FormLabel>
+                        <FormControl>
+                          <Input
+                            placeholder={baseFields.organization?.placeholder || ""}
+                            {...field}
+                            data-testid="input-organization"
+                          />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
-                <FormField
-                  control={form.control}
-                  name="groupSize"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel>Group Size (Maximum 4 people) *</FormLabel>
-                      <FormControl>
-                        <RadioGroup
-                          onValueChange={field.onChange}
-                          defaultValue={field.value}
-                          className="flex gap-4"
-                          data-testid="radio-group-size"
-                        >
-                          {["1", "2", "3", "4"].map((size) => (
-                            <div key={size} className="flex items-center space-x-2">
-                              <RadioGroupItem
-                                value={size}
-                                id={`size-${size}`}
-                                data-testid={`radio-size-${size}`}
-                              />
-                              <label
-                                htmlFor={`size-${size}`}
-                                className="text-sm font-medium cursor-pointer"
-                              >
-                                {size} {size === "1" ? "person" : "people"}
-                              </label>
-                            </div>
-                          ))}
-                        </RadioGroup>
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                {baseFields.groupSize?.enabled && baseFields.groupSize && (
+                  <FormField
+                    control={form.control}
+                    name="groupSize"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>{baseFields.groupSize?.label} {baseFields.groupSize?.required && "*"}</FormLabel>
+                        <FormControl>
+                          <RadioGroup
+                            onValueChange={field.onChange}
+                            defaultValue={field.value}
+                            className="flex gap-4"
+                            data-testid="radio-group-size"
+                          >
+                            {["1", "2", "3", "4"].map((size) => (
+                              <div key={size} className="flex items-center space-x-2">
+                                <RadioGroupItem
+                                  value={size}
+                                  id={`size-${size}`}
+                                  data-testid={`radio-size-${size}`}
+                                />
+                                <label
+                                  htmlFor={`size-${size}`}
+                                  className="text-sm font-medium cursor-pointer"
+                                >
+                                  {size} {size === "1" ? "person" : "people"}
+                                </label>
+                              </div>
+                            ))}
+                          </RadioGroup>
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                )}
 
                 {customFields.map((customField) => (
                   <FormField

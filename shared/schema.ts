@@ -1,12 +1,12 @@
 import { z } from "zod";
 
-// Registration schema
+// Registration schema - flexible to support optional fields
 export const insertRegistrationSchema = z.object({
-  name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(1, "Phone is required"),
-  organization: z.string().min(1, "Organization is required"),
-  groupSize: z.number().min(1).max(4),
+  name: z.string().optional(),
+  email: z.string().optional(),
+  phone: z.string().optional(),
+  organization: z.string().optional(),
+  groupSize: z.number().min(1).max(4).optional(),
   formId: z.number().nullable().optional(),
   customFieldData: z.record(z.string()).optional(),
 });
@@ -55,6 +55,16 @@ export const customFieldSchema = z.object({
 
 export type CustomField = z.infer<typeof customFieldSchema>;
 
+// Base field configuration
+export const baseFieldConfigSchema = z.object({
+  label: z.string().min(1, "Label is required"),
+  placeholder: z.string().optional(),
+  required: z.boolean().default(true),
+  enabled: z.boolean().default(true),
+});
+
+export type BaseFieldConfig = z.infer<typeof baseFieldConfigSchema>;
+
 // Event form schema
 export const eventFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -68,6 +78,15 @@ export const eventFormSchema = z.object({
   })).optional(),
   description: z.string().optional(),
   customFields: z.array(customFieldSchema).optional(),
+  baseFields: z.object({
+    name: baseFieldConfigSchema.optional(),
+    email: baseFieldConfigSchema.optional(),
+    phone: baseFieldConfigSchema.optional(),
+    organization: baseFieldConfigSchema.optional(),
+    groupSize: baseFieldConfigSchema.optional(),
+  }).optional(),
+  successMessage: z.string().optional(),
+  successTitle: z.string().optional(),
 });
 
 export type EventFormInput = z.infer<typeof eventFormSchema>;
@@ -82,6 +101,15 @@ export interface EventForm {
   customLinks: Array<{ label: string; url: string }>;
   description: string | null;
   customFields: CustomField[];
+  baseFields?: {
+    name?: BaseFieldConfig;
+    email?: BaseFieldConfig;
+    phone?: BaseFieldConfig;
+    organization?: BaseFieldConfig;
+    groupSize?: BaseFieldConfig;
+  };
+  successMessage: string | null;
+  successTitle: string | null;
   isPublished: boolean;
   createdAt: string;
   updatedAt: string;
