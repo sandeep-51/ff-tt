@@ -422,6 +422,11 @@ export class TicketDatabase {
 
   // Delete registration
   deleteRegistration(id: string): boolean {
+    // First delete any scan history entries for this registration
+    const deleteScanHistoryStmt = this.db.prepare("DELETE FROM scan_history WHERE ticketId = ?");
+    deleteScanHistoryStmt.run(id);
+    
+    // Then delete the registration
     const stmt = this.db.prepare("DELETE FROM registrations WHERE id = ?");
     const result = stmt.run(id);
     return result.changes > 0;
