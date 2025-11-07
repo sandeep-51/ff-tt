@@ -58,10 +58,10 @@ export type AdminLogin = z.infer<typeof adminLoginSchema>;
 // Custom field types for event forms
 export const customFieldSchema = z.object({
   id: z.string(),
-  type: z.enum(["text", "email", "phone", "textarea", "url", "photo", "payment"]),
+  type: z.enum(["text", "email", "phone", "url", "textarea", "photo", "payment"]),
   label: z.string().min(1, "Label is required"),
-  required: z.boolean().default(false),
   placeholder: z.string().optional(),
+  required: z.boolean().default(false),
   paymentUrl: z.string().optional(), // For payment link field - allow any string, validate as URL in form builder
 });
 

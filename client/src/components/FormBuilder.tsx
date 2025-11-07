@@ -273,7 +273,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
     // Validate payment fields have payment URLs
     const paymentFields = data.customFields?.filter(f => f.type === 'payment') || [];
     const invalidPaymentFields = paymentFields.filter(f => !(f as any).paymentUrl || (f as any).paymentUrl.trim() === '');
-    
+
     if (invalidPaymentFields.length > 0) {
       toast({
         title: "Validation Error",
@@ -282,8 +282,20 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       });
       return;
     }
-    
-    saveMutation.mutate(data);
+
+    const payload = {
+      ...data,
+      customFields: data.customFields.map(field => ({
+        id: field.id,
+        type: field.type,
+        label: field.label,
+        placeholder: field.placeholder || "",
+        required: field.required,
+        ...(field.type === "payment" && { paymentUrl: field.paymentUrl || "" }),
+      })),
+    };
+
+    saveMutation.mutate(payload as any); // Type assertion here as the payload is slightly different
   };
 
   const handlePublish = () => {
@@ -545,7 +557,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                   />
                 </div>
               ))}
-              
+
               {/* Team Members Configuration */}
               <Card className="border-2 border-primary/20">
                 <CardHeader>
@@ -872,15 +884,15 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       <FormField
                         control={form.control}
                         name={`customFields.${index}.paymentUrl` as any}
-                        render={({ field }) => (
+                        render={({ field: paymentUrlField }) => (
                           <FormItem className="flex-1">
                             <FormLabel>Payment Link URL *</FormLabel>
                             <FormControl>
                               <Input
                                 type="url"
                                 placeholder="https://payment-gateway.com/your-link"
-                                {...field}
-                                data-testid={`input-field-payment-url-${index}`}
+                                {...paymentUrlField}
+                                value={paymentUrlField.value || ""}
                               />
                             </FormControl>
                             <FormMessage />
