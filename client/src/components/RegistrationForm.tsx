@@ -660,19 +660,21 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                               )}
                             </div>
                           ) : customField.type === "payment" ? (
-                            <div className="space-y-2">
-                              <a
-                                href={customField.paymentUrl}
-                                target="_blank"
-                                rel="noopener noreferrer"
-                                className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
-                              >
-                                <DollarSign className="mr-2 h-4 w-4" />
-                                Proceed to Payment
-                              </a>
+                            <div className="space-y-3">
+                              {(customField as any).paymentUrl && (
+                                <a
+                                  href={(customField as any).paymentUrl}
+                                  target="_blank"
+                                  rel="noopener noreferrer"
+                                  className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
+                                >
+                                  <DollarSign className="mr-2 h-4 w-4" />
+                                  Proceed to Payment
+                                </a>
+                              )}
                               <Input
                                 type="text"
-                                placeholder="Enter transaction ID after payment"
+                                placeholder={customField.placeholder || "Enter transaction ID after payment"}
                                 {...field}
                                 data-testid={`input-custom-${customField.id}`}
                               />
