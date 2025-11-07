@@ -108,8 +108,12 @@ export class SqliteStorage implements IStorage {
       }
     });
 
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At', ...Array.from(allCustomFieldKeys)];
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At', 'Team Members', ...Array.from(allCustomFieldKeys)];
     const rows = registrations.map(r => {
+      const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
+        ? r.teamMembers.map(m => `${m.name} (${m.email || 'N/A'})`).join('; ')
+        : '';
+      
       const baseRow = [
         r.id,
         r.name,
@@ -121,7 +125,8 @@ export class SqliteStorage implements IStorage {
         r.maxScans.toString(),
         r.hasQR ? 'Yes' : 'No',
         r.status,
-        r.createdAt
+        r.createdAt,
+        teamMembersStr
       ];
       
       const customFieldValues = Array.from(allCustomFieldKeys).map(key => {
@@ -133,7 +138,7 @@ export class SqliteStorage implements IStorage {
     
     const csvContent = [
       headers.join(','),
-      ...rows.map(row => row.map(cell => `"${cell}"`).join(','))
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
     
     return csvContent;
@@ -179,9 +184,19 @@ export class SqliteStorage implements IStorage {
         doc.text(`   Organization: ${reg.organization}`);
         doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
         
+        if (reg.teamMembers && reg.teamMembers.length > 0) {
+          doc.text(`   Team Members:`);
+          reg.teamMembers.forEach((member, idx) => {
+            doc.text(`     ${idx + 1}. ${member.name}${member.email ? ` (${member.email})` : ''}${member.phone ? ` - ${member.phone}` : ''}`);
+          });
+        }
+        
         if (reg.customFieldData && Object.keys(reg.customFieldData).length > 0) {
           Object.entries(reg.customFieldData).forEach(([key, value]) => {
-            doc.text(`   ${key}: ${value}`);
+            const displayValue = String(value).startsWith('/attached_assets/') 
+              ? `[Photo: ${value}]` 
+              : value;
+            doc.text(`   ${key}: ${displayValue}`);
           });
         }
       });
@@ -194,6 +209,10 @@ export class SqliteStorage implements IStorage {
     const XLSX = require('xlsx');
     
     const rows = registrations.map((r) => {
+      const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
+        ? r.teamMembers.map(m => `${m.name}${m.email ? ` (${m.email})` : ''}${m.phone ? ` - ${m.phone}` : ''}`).join('; ')
+        : '';
+      
       const row: any = {
         ID: r.id,
         Name: r.name,
@@ -206,6 +225,7 @@ export class SqliteStorage implements IStorage {
         'Has QR': r.hasQR ? 'Yes' : 'No',
         Status: r.status,
         'Created At': r.createdAt,
+        'Team Members': teamMembersStr,
       };
       
       if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {

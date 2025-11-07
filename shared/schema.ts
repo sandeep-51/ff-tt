@@ -1,5 +1,14 @@
 import { z } from "zod";
 
+// Team member schema
+export const teamMemberSchema = z.object({
+  name: z.string().min(1, "Member name is required"),
+  email: z.string().email("Invalid email").optional(),
+  phone: z.string().optional(),
+});
+
+export type TeamMember = z.infer<typeof teamMemberSchema>;
+
 // Registration schema - flexible to support optional fields
 export const insertRegistrationSchema = z.object({
   name: z.string().optional(),
@@ -9,6 +18,7 @@ export const insertRegistrationSchema = z.object({
   groupSize: z.number().min(1).max(4).optional(),
   formId: z.number().nullable().optional(),
   customFieldData: z.record(z.string()).optional(),
+  teamMembers: z.array(teamMemberSchema).optional(),
 });
 
 export type InsertRegistration = z.infer<typeof insertRegistrationSchema>;
@@ -27,6 +37,7 @@ export interface Registration {
   status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt: string;
   customFieldData: Record<string, string>;
+  teamMembers?: TeamMember[];
 }
 
 // Scan history schema

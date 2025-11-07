@@ -1,5 +1,5 @@
 import { useState, useMemo } from "react";
-import { useForm } from "react-hook-form";
+import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
 import { useMutation, useQuery } from "@tanstack/react-query";
@@ -11,12 +11,13 @@ import {
   FormItem,
   FormLabel,
   FormMessage,
+  FormDescription,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2 } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { EventForm, CustomField } from "@shared/schema";
@@ -52,6 +53,13 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     });
     baseSchema.groupSize = baseFields.groupSize.required ? groupSizeSchema : groupSizeSchema.optional();
   }
+
+  // Add team members schema
+  baseSchema.teamMembers = z.array(z.object({
+    name: z.string().min(1, "Member name is required"),
+    email: z.string().email("Invalid email").optional().or(z.literal("")),
+    phone: z.string().optional().or(z.literal("")),
+  })).min(1, "At least one team member is required");
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
 
@@ -118,6 +126,8 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.phone?.enabled) defaultValues.phone = "";
   if (baseFields.organization?.enabled) defaultValues.organization = "";
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
+  
+  defaultValues.teamMembers = [{ name: "", email: "", phone: "" }];
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -126,6 +136,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const form = useForm<any>({
     resolver: zodResolver(registrationSchema),
     defaultValues,
+  });
+
+  const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
+    control: form.control,
+    name: "teamMembers",
   });
 
   const uploadPhotoMutation = useMutation({
@@ -174,6 +189,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
       if (baseFields.phone?.enabled && data.phone) payload.phone = data.phone;
       if (baseFields.organization?.enabled && data.organization) payload.organization = data.organization;
       if (baseFields.groupSize?.enabled && data.groupSize) payload.groupSize = parseInt(data.groupSize);
+      
+      // Add team members
+      if (data.teamMembers && data.teamMembers.length > 0) {
+        payload.teamMembers = data.teamMembers.filter((m: any) => m.name);
+      }
 
       const response = await apiRequest("POST", "/api/register", payload);
       return response.json();
@@ -479,6 +499,83 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                     )}
                   />
                 )}
+
+                <Card className="border-2 border-primary/20 bg-primary/5">
+                  <CardHeader>
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <Users className="h-5 w-5" />
+                      Team Members *
+                    </CardTitle>
+                    <CardDescription>Add all team members (required)</CardDescription>
+                  </CardHeader>
+                  <CardContent className="space-y-4">
+                    {teamMemberFields.map((field, index) => (
+                      <div key={field.id} className="p-4 border rounded-lg space-y-3 bg-background">
+                        <div className="flex items-center justify-between mb-2">
+                          <h4 className="font-medium">Member {index + 1}</h4>
+                          {teamMemberFields.length > 1 && (
+                            <Button
+                              type="button"
+                              variant="ghost"
+                              size="sm"
+                              onClick={() => removeTeamMember(index)}
+                            >
+                              <Trash2 className="h-4 w-4" />
+                            </Button>
+                          )}
+                        </div>
+                        <FormField
+                          control={form.control}
+                          name={`teamMembers.${index}.name`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Full Name *</FormLabel>
+                              <FormControl>
+                                <Input placeholder="Enter member name" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`teamMembers.${index}.email`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Email</FormLabel>
+                              <FormControl>
+                                <Input type="email" placeholder="member@example.com" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name={`teamMembers.${index}.phone`}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel>Phone</FormLabel>
+                              <FormControl>
+                                <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                              </FormControl>
+                              <FormMessage />
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    ))}
+                    <Button
+                      type="button"
+                      variant="outline"
+                      onClick={() => appendTeamMember({ name: "", email: "", phone: "" })}
+                      className="w-full"
+                    >
+                      <Plus className="h-4 w-4 mr-2" />
+                      Add Team Member
+                    </Button>
+                  </CardContent>
+                </Card>
 
                 {customFields.map((customField) => (
                   <FormField

@@ -1,5 +1,5 @@
 import Database from "better-sqlite3";
-import { randomUUID } from "crypto";
+import { nanoid } from "nanoid"; // Assuming nanoid is available and preferred over crypto.randomUUID
 import type { Registration, InsertRegistration, ScanHistory } from "@shared/schema";
 
 const db = new Database("tickets.db");
@@ -20,6 +20,15 @@ try {
 // Migration: Add customFieldData column to registrations if it doesn't exist
 try {
   db.exec(`ALTER TABLE registrations ADD COLUMN customFieldData TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
+// Migration: Add teamMembers column to registrations if it doesn't exist
+try {
+  db.exec(`ALTER TABLE registrations ADD COLUMN teamMembers TEXT DEFAULT '[]'`);
 } catch (error: any) {
   if (!error.message.includes("duplicate column name")) {
     console.error("Migration warning:", error.message);
@@ -79,6 +88,7 @@ db.exec(`
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     formId INTEGER,
     customFieldData TEXT,
+    teamMembers TEXT DEFAULT '[]',
     FOREIGN KEY (formId) REFERENCES event_forms(id)
   );
 
@@ -131,8 +141,8 @@ export class TicketDatabase {
     const maxScans = groupSize * 4;
 
     const stmt = this.db.prepare(`
-      INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId, customFieldData)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId, customFieldData, teamMembers)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -144,7 +154,8 @@ export class TicketDatabase {
       groupSize,
       maxScans,
       data.formId || null,
-      data.customFieldData ? JSON.stringify(data.customFieldData) : null
+      data.customFieldData ? JSON.stringify(data.customFieldData) : null,
+      data.teamMembers ? JSON.stringify(data.teamMembers) : JSON.stringify([])
     );
 
     const registration = this.getRegistration(id);
@@ -171,7 +182,8 @@ export class TicketDatabase {
         status,
         createdAt,
         formId,
-        customFieldData
+        customFieldData,
+        teamMembers
       FROM registrations
       WHERE id = ?
     `);
@@ -181,8 +193,12 @@ export class TicketDatabase {
 
     return {
       ...row,
+      groupSize: Number(row.groupSize),
+      scans: Number(row.scans),
+      maxScans: Number(row.maxScans),
       hasQR: Boolean(row.hasQR),
       customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
+      teamMembers: row.teamMembers ? JSON.parse(row.teamMembers) : [],
     };
   }
 
@@ -202,7 +218,8 @@ export class TicketDatabase {
         status,
         createdAt,
         formId,
-        customFieldData
+        customFieldData,
+        teamMembers
       FROM registrations
       ORDER BY createdAt DESC
     `);
@@ -210,8 +227,12 @@ export class TicketDatabase {
     const rows = stmt.all() as any[];
     return rows.map((row) => ({
       ...row,
+      groupSize: Number(row.groupSize),
+      scans: Number(row.scans),
+      maxScans: Number(row.maxScans),
       hasQR: Boolean(row.hasQR),
       customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
+      teamMembers: row.teamMembers ? JSON.parse(row.teamMembers) : [],
     }));
   }
 
@@ -231,15 +252,20 @@ export class TicketDatabase {
         status,
         createdAt,
         formId,
-        customFieldData
+        customFieldData,
+        teamMembers
       FROM registrations
       WHERE formId = ? ORDER BY createdAt DESC
     `);
     const rows = stmt.all(formId) as any[];
     return rows.map((row) => ({
       ...row,
+      groupSize: Number(row.groupSize),
+      scans: Number(row.scans),
+      maxScans: Number(row.maxScans),
       hasQR: Boolean(row.hasQR),
       customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
+      teamMembers: row.teamMembers ? JSON.parse(row.teamMembers) : [],
     }));
   }
 
@@ -306,7 +332,7 @@ export class TicketDatabase {
 
   // Scan history methods
   addScanHistory(ticketId: string, valid: boolean): void {
-    const id = randomUUID();
+    const id = nanoid(); // Use nanoid for scan history IDs
     const stmt = this.db.prepare(`
       INSERT INTO scan_history (id, ticketId, valid)
       VALUES (?, ?, ?)

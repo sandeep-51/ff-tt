@@ -429,38 +429,35 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               <CardTitle>Form Fields Configuration</CardTitle>
               <CardDescription>Customize labels, placeholders, and requirements for each field</CardDescription>
             </CardHeader>
-            <CardContent className="space-y-6">
+            <CardContent className="space-y-4">
               {["name", "email", "phone", "organization", "groupSize"].map((fieldName) => (
-                <div key={fieldName} className={`p-4 border-2 rounded-md space-y-4 transition-all ${form.watch(`baseFields.${fieldName}.enabled` as any) ? 'border-primary/30 bg-primary/5' : 'border-muted bg-muted/30 opacity-60'}`}>
-                  <div className="flex items-center justify-between">
-                    <h4 className="font-semibold capitalize text-lg">{fieldName.replace(/([A-Z])/g, ' $1').trim()} Field</h4>
+                <div key={fieldName} className="p-4 border rounded-md space-y-3">
+                  <div className="flex items-center justify-between mb-2">
+                    <h4 className="font-medium capitalize">{fieldName.replace(/([A-Z])/g, ' $1').trim()}</h4>
                     <FormField
                       control={form.control}
                       name={`baseFields.${fieldName}.enabled` as any}
                       render={({ field }) => (
-                        <FormItem className="flex items-center gap-3 space-y-0">
-                          <FormLabel className="text-sm font-medium">
-                            {field.value ? "✓ Enabled" : "✗ Disabled"}
-                          </FormLabel>
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormLabel className="text-sm">Enabled</FormLabel>
                           <FormControl>
                             <Checkbox
                               checked={field.value}
                               onCheckedChange={field.onChange}
                               data-testid={`checkbox-field-${fieldName}-enabled`}
-                              className="h-5 w-5"
                             />
                           </FormControl>
                         </FormItem>
                       )}
                     />
                   </div>
-                  <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name={`baseFields.${fieldName}.label` as any}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Field Label *</FormLabel>
+                          <FormLabel className="text-sm">Label</FormLabel>
                           <FormControl>
                             <Input placeholder="Enter label" {...field} data-testid={`input-field-${fieldName}-label`} />
                           </FormControl>
@@ -473,7 +470,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       name={`baseFields.${fieldName}.placeholder` as any}
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Placeholder</FormLabel>
+                          <FormLabel className="text-sm">Placeholder</FormLabel>
                           <FormControl>
                             <Input placeholder="Enter placeholder" {...field} value={field.value || ""} data-testid={`input-field-${fieldName}-placeholder`} />
                           </FormControl>
@@ -494,7 +491,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                             data-testid={`checkbox-field-${fieldName}-required`}
                           />
                         </FormControl>
-                        <FormLabel className="text-sm font-normal">Required Field</FormLabel>
+                        <FormLabel className="text-sm">Required</FormLabel>
                       </FormItem>
                     )}
                   />
@@ -731,30 +728,27 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
             </CardHeader>
             <CardContent className="space-y-4">
               {(form.watch("customFields") || []).map((field, index) => (
-                <div key={field.id} className="p-4 border-2 border-muted rounded-lg space-y-4 hover:border-primary/50 transition-colors bg-card">
-                  <div className="flex gap-4 items-start">
-                    <div className="flex items-center justify-center pt-8">
-                      <GripVertical className="h-5 w-5 text-muted-foreground cursor-move" />
-                    </div>
+                <div key={field.id} className="p-4 border rounded-md space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
                       name={`customFields.${index}.type`}
                       render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Field Type</FormLabel>
+                        <FormItem>
+                          <FormLabel className="text-sm">Type</FormLabel>
                           <Select onValueChange={field.onChange} defaultValue={field.value}>
                             <FormControl>
                               <SelectTrigger data-testid={`select-field-type-${index}`}>
-                                <SelectValue placeholder="Select field type" />
+                                <SelectValue placeholder="Select type" />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
-                              <SelectItem value="text">📝 Text</SelectItem>
-                              <SelectItem value="email">📧 Email</SelectItem>
-                              <SelectItem value="phone">📱 Phone</SelectItem>
-                              <SelectItem value="textarea">📄 Long Text</SelectItem>
-                              <SelectItem value="url">🔗 URL</SelectItem>
-                              <SelectItem value="photo">📷 Photo Upload</SelectItem>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="phone">Phone</SelectItem>
+                              <SelectItem value="textarea">Long Text</SelectItem>
+                              <SelectItem value="url">URL</SelectItem>
+                              <SelectItem value="photo">Photo Upload</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -765,25 +759,25 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       control={form.control}
                       name={`customFields.${index}.label`}
                       render={({ field }) => (
-                        <FormItem className="flex-1">
-                          <FormLabel>Field Label *</FormLabel>
+                        <FormItem>
+                          <FormLabel className="text-sm">Label</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., Company Website" {...field} data-testid={`input-field-label-${index}`} />
+                            <Input placeholder="Field label" {...field} data-testid={`input-field-label-${index}`} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
                   </div>
-                  <div className="flex gap-4 items-end">
+                  <div className="flex gap-3 items-end">
                     <FormField
                       control={form.control}
                       name={`customFields.${index}.placeholder`}
                       render={({ field }) => (
                         <FormItem className="flex-1">
-                          <FormLabel>Placeholder</FormLabel>
+                          <FormLabel className="text-sm">Placeholder</FormLabel>
                           <FormControl>
-                            <Input placeholder="e.g., https://example.com" {...field} value={field.value || ""} data-testid={`input-field-placeholder-${index}`} />
+                            <Input placeholder="Placeholder text" {...field} value={field.value || ""} data-testid={`input-field-placeholder-${index}`} />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -801,7 +795,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                               data-testid={`checkbox-field-required-${index}`}
                             />
                           </FormControl>
-                          <FormLabel className="text-sm font-normal">Required</FormLabel>
+                          <FormLabel className="text-sm">Required</FormLabel>
                         </FormItem>
                       )}
                     />
@@ -811,7 +805,6 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       size="icon"
                       onClick={() => removeCustomField(index)}
                       data-testid={`button-remove-field-${index}`}
-                      title="Remove field"
                     >
                       <Trash2 className="h-4 w-4" />
                     </Button>
