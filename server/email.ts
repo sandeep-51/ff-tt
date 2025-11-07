@@ -49,6 +49,10 @@ export async function sendQRCodeEmail(
   });
 
   try {
+    // Convert data URL to buffer for attachment
+    const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
+    const imageBuffer = Buffer.from(base64Data, 'base64');
+
     const mailOptions = {
       from: EMAIL_FROM,
       to: registration.email,
@@ -140,9 +144,9 @@ export async function sendQRCodeEmail(
               
               <div class="qr-code">
                 <h3>Your QR Code</h3>
-                <img src="${qrCodeDataUrl}" alt="QR Code" />
+                <img src="cid:qrcode" alt="QR Code" />
                 <p style="color: #666; font-size: 14px;">
-                  Save this QR code or show it on your phone at the event
+                  📥 Download the attached QR code image or show it on your phone at the event
                 </p>
               </div>
               
@@ -167,6 +171,14 @@ export async function sendQRCodeEmail(
         </body>
         </html>
       `,
+      attachments: [
+        {
+          filename: `QR-Code-${registration.id}.png`,
+          content: imageBuffer,
+          cid: 'qrcode', // Referenced in HTML as <img src="cid:qrcode">
+          contentType: 'image/png'
+        }
+      ]
     };
 
     const info = await transporter.sendMail(mailOptions);
