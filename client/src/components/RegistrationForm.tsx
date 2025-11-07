@@ -24,28 +24,28 @@ import freeFireBgImage from "@assets/ChatGPT Image Nov 7, 2025, 12_19_25 AM_1762
 
 const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: EventForm['baseFields']) => {
   const baseSchema: Record<string, z.ZodTypeAny> = {};
-  
+
   // Build base fields schema from configuration
   if (baseFields?.name?.enabled) {
     const nameSchema = z.string().min(2, "Name must be at least 2 characters");
     baseSchema.name = baseFields.name.required ? nameSchema : nameSchema.optional().or(z.literal(""));
   }
-  
+
   if (baseFields?.email?.enabled) {
     const emailSchema = z.string().email("Invalid email address");
     baseSchema.email = baseFields.email.required ? emailSchema : emailSchema.optional().or(z.literal(""));
   }
-  
+
   if (baseFields?.phone?.enabled) {
     const phoneSchema = z.string().min(10, "Phone number must be at least 10 digits");
     baseSchema.phone = baseFields.phone.required ? phoneSchema : phoneSchema.optional().or(z.literal(""));
   }
-  
+
   if (baseFields?.organization?.enabled) {
     const orgSchema = z.string().min(2, "Organization must be at least 2 characters");
     baseSchema.organization = baseFields.organization.required ? orgSchema : orgSchema.optional().or(z.literal(""));
   }
-  
+
   if (baseFields?.groupSize?.enabled) {
     const groupSizeSchema = z.enum(["1", "2", "3", "4"], {
       required_error: "Please select group size",
@@ -54,10 +54,10 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
   }
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
-  
+
   customFields.forEach((field) => {
     let fieldSchema: z.ZodTypeAny;
-    
+
     switch (field.type) {
       case "email":
         fieldSchema = z.string().email("Invalid email address");
@@ -74,7 +74,7 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
       default:
         fieldSchema = z.string().min(1, `${field.label} is required`);
     }
-    
+
     customFieldsSchema[field.id] = field.required ? fieldSchema : fieldSchema.optional().or(z.literal(""));
   });
 
@@ -93,6 +93,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const title = publishedForm?.title || "Event Registration";
   const subtitle = publishedForm?.subtitle || "Register now to receive your secure QR-based entry pass";
   const heroImage = publishedForm?.heroImageUrl || freeFireBgImage;
+  const backgroundImage = publishedForm?.backgroundImageUrl || freeFireBgImage; // New: Add background image URL
   const watermarkUrl = publishedForm?.watermarkUrl;
   const logoUrl = publishedForm?.logoUrl;
   const customLinks = publishedForm?.customLinks || [];
@@ -166,7 +167,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
       });
 
       const payload: any = { customFieldData };
-      
+
       // Only include enabled fields
       if (baseFields.name?.enabled && data.name) payload.name = data.name;
       if (baseFields.email?.enabled && data.email) payload.email = data.email;

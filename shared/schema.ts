@@ -70,6 +70,7 @@ export const eventFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   subtitle: z.string().optional(),
   heroImageUrl: z.string().optional(),
+  backgroundImageUrl: z.string().optional(),
   watermarkUrl: z.string().optional(),
   logoUrl: z.string().optional(),
   customLinks: z.array(z.object({

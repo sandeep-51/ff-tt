@@ -73,6 +73,31 @@
   --chart-1: 221 83% 53%;
   --chart-2: 142 76% 36%;
   --chart-3: 262 83% 58%;
+
+
+/* Form Builder Toolbar Styles */
+.form-builder-toolbar {
+  position: sticky;
+  top: 1rem;
+}
+
+.toolbar-button {
+  transition: all 0.2s ease;
+}
+
+.toolbar-button:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.1);
+}
+
+.custom-field-card {
+  transition: all 0.2s ease;
+}
+
+.custom-field-card:hover {
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.08);
+}
+
   --chart-4: 33 100% 50%;
   --chart-5: 340 82% 52%;
 
@@ -215,6 +240,23 @@
     /* Dotted matrix background pattern */
     background-image: radial-gradient(circle, hsl(var(--muted-foreground) / 0.15) 1px, transparent 1px);
     background-size: 20px 20px;
+  }
+
+  /* Form background image support - cross-browser compatible */
+  .form-with-background {
+    -webkit-background-size: cover;
+    -moz-background-size: cover;
+    -o-background-size: cover;
+    background-size: cover;
+  }
+
+  /* Ensure background stays fixed on iOS Safari */
+  @supports (-webkit-touch-callout: none) {
+    .form-with-background {
+      background-attachment: scroll;
+      min-height: 100vh;
+      min-height: -webkit-fill-available;
+    }
   }
 }
 
