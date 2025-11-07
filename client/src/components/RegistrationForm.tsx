@@ -16,6 +16,7 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -54,12 +55,14 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     baseSchema.groupSize = baseFields.groupSize.required ? groupSizeSchema : groupSizeSchema.optional();
   }
 
-  // Add team members schema
+  // Add team members schema with all fields required
   baseSchema.teamMembers = z.array(z.object({
     name: z.string().min(1, "Member name is required"),
-    email: z.string().email("Invalid email").optional().or(z.literal("")),
-    phone: z.string().optional().or(z.literal("")),
+    email: z.string().email("Invalid email").min(1, "Email is required"),
+    phone: z.string().min(10, "Phone number is required (minimum 10 digits)"),
   })).min(1, "At least one team member is required");
+  
+  baseSchema.teamMemberCount = z.string().min(1, "Please select number of team members");
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
 
@@ -128,6 +131,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
   
   defaultValues.teamMembers = [{ name: "", email: "", phone: "" }];
+  defaultValues.teamMemberCount = "1";
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -137,6 +141,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     resolver: zodResolver(registrationSchema),
     defaultValues,
   });
+
+  const maxTeamMembers = publishedForm?.baseFields?.groupSize?.maxTeamMembers || 4;
+  const [selectedMemberCount, setSelectedMemberCount] = useState(1);
 
   const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
     control: form.control,
@@ -506,23 +513,62 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                       <Users className="h-5 w-5" />
                       Team Members *
                     </CardTitle>
-                    <CardDescription>Add all team members (required)</CardDescription>
+                    <CardDescription>Select number of team members and fill in their details</CardDescription>
                   </CardHeader>
                   <CardContent className="space-y-4">
+                    {/* Member Count Selector */}
+                    <FormField
+                      control={form.control}
+                      name="teamMemberCount"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Number of Team Members *</FormLabel>
+                          <Select
+                            onValueChange={(value) => {
+                              const count = parseInt(value);
+                              setSelectedMemberCount(count);
+                              
+                              // Adjust team members array
+                              const currentCount = teamMemberFields.length;
+                              if (count > currentCount) {
+                                for (let i = currentCount; i < count; i++) {
+                                  appendTeamMember({ name: "", email: "", phone: "" });
+                                }
+                              } else if (count < currentCount) {
+                                for (let i = currentCount - 1; i >= count; i--) {
+                                  removeTeamMember(i);
+                                }
+                              }
+                              field.onChange(value);
+                            }}
+                            defaultValue="1"
+                          >
+                            <FormControl>
+                              <SelectTrigger data-testid="select-member-count">
+                                <SelectValue placeholder="Select number of members" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              {Array.from({ length: maxTeamMembers }, (_, i) => i + 1).map((num) => (
+                                <SelectItem key={num} value={num.toString()}>
+                                  {num} {num === 1 ? 'Member' : 'Members'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
+                          <FormDescription>
+                            Maximum {maxTeamMembers} members allowed per registration
+                          </FormDescription>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+
+                    {/* Team Member Details */}
                     {teamMemberFields.map((field, index) => (
                       <div key={field.id} className="p-4 border rounded-lg space-y-3 bg-background">
                         <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">Member {index + 1}</h4>
-                          {teamMemberFields.length > 1 && (
-                            <Button
-                              type="button"
-                              variant="ghost"
-                              size="sm"
-                              onClick={() => removeTeamMember(index)}
-                            >
-                              <Trash2 className="h-4 w-4" />
-                            </Button>
-                          )}
+                          <h4 className="font-medium">Member {index + 1} Details</h4>
                         </div>
                         <FormField
                           control={form.control}
@@ -542,7 +588,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           name={`teamMembers.${index}.email`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email</FormLabel>
+                              <FormLabel>Email *</FormLabel>
                               <FormControl>
                                 <Input type="email" placeholder="member@example.com" {...field} />
                               </FormControl>
@@ -555,7 +601,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           name={`teamMembers.${index}.phone`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone</FormLabel>
+                              <FormLabel>Phone Number *</FormLabel>
                               <FormControl>
                                 <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
                               </FormControl>
@@ -565,15 +611,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                         />
                       </div>
                     ))}
-                    <Button
-                      type="button"
-                      variant="outline"
-                      onClick={() => appendTeamMember({ name: "", email: "", phone: "" })}
-                      className="w-full"
-                    >
-                      <Plus className="h-4 w-4 mr-2" />
-                      Add Team Member
-                    </Button>
                   </CardContent>
                 </Card>
 

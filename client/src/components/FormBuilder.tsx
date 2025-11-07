@@ -501,6 +501,41 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                   />
                 </div>
               ))}
+              
+              {/* Team Members Configuration */}
+              <Card className="border-2 border-primary/20">
+                <CardHeader>
+                  <CardTitle className="text-base">Team Members Configuration</CardTitle>
+                  <CardDescription>Configure how many team members can register together</CardDescription>
+                </CardHeader>
+                <CardContent>
+                  <FormField
+                    control={form.control}
+                    name="baseFields.groupSize.maxTeamMembers"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>Maximum Team Members Allowed</FormLabel>
+                        <FormControl>
+                          <Input
+                            type="number"
+                            min="1"
+                            max="20"
+                            placeholder="Enter max team members (1-20)"
+                            {...field}
+                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                            value={field.value || 4}
+                            data-testid="input-max-team-members"
+                          />
+                        </FormControl>
+                        <FormDescription>
+                          Users will be able to add up to this many team members (default: 4)
+                        </FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </CardContent>
+              </Card>
             </CardContent>
           </Card>
 
