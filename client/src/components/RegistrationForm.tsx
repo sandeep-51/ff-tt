@@ -61,7 +61,7 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     email: z.string().email("Invalid email").min(1, "Email is required"),
     phone: z.string().min(10, "Phone number is required (minimum 10 digits)"),
   })).min(1, "At least one team member is required");
-  
+
   baseSchema.teamMemberCount = z.string().min(1, "Please select number of team members");
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
@@ -129,7 +129,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.phone?.enabled) defaultValues.phone = "";
   if (baseFields.organization?.enabled) defaultValues.organization = "";
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
-  
+
   defaultValues.teamMembers = [{ name: "", email: "", phone: "" }];
   defaultValues.teamMemberCount = "1";
 
@@ -196,7 +196,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
       if (baseFields.phone?.enabled && data.phone) payload.phone = data.phone;
       if (baseFields.organization?.enabled && data.organization) payload.organization = data.organization;
       if (baseFields.groupSize?.enabled && data.groupSize) payload.groupSize = parseInt(data.groupSize);
-      
+
       // Add team members
       if (data.teamMembers && data.teamMembers.length > 0) {
         payload.teamMembers = data.teamMembers.filter((m: any) => m.name);
@@ -388,89 +388,103 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
           <CardContent>
             <Form {...form}>
               <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                {baseFields.name?.enabled && baseFields.name && (
+                {baseFields.name?.enabled && (
                   <FormField
                     control={form.control}
                     name="name"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{baseFields.name?.label} {baseFields.name?.required && "*"}</FormLabel>
+                        <FormLabel>
+                          {baseFields.name.label}
+                          {baseFields.name.required && <span className="text-destructive ml-1">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder={baseFields.name?.placeholder || ""}
-                            {...field}
-                            data-testid="input-name"
-                          />
+                          <Input placeholder={baseFields.name.placeholder || ""} {...field} data-testid="input-name" />
                         </FormControl>
+                        {baseFields.name.helpText && (
+                          <FormDescription className="text-sm text-muted-foreground mt-1">
+                            {baseFields.name.helpText}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
 
-                {baseFields.email?.enabled && baseFields.email && (
+                {baseFields.email?.enabled && (
                   <FormField
                     control={form.control}
                     name="email"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{baseFields.email?.label} {baseFields.email?.required && "*"}</FormLabel>
+                        <FormLabel>
+                          {baseFields.email.label}
+                          {baseFields.email.required && <span className="text-destructive ml-1">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input
-                            type="email"
-                            placeholder={baseFields.email?.placeholder || ""}
-                            {...field}
-                            data-testid="input-email"
-                          />
+                          <Input type="email" placeholder={baseFields.email.placeholder || ""} {...field} data-testid="input-email" />
                         </FormControl>
+                        {baseFields.email.helpText && (
+                          <FormDescription className="text-sm text-muted-foreground mt-1">
+                            {baseFields.email.helpText}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
 
-                {baseFields.phone?.enabled && baseFields.phone && (
+                {baseFields.phone?.enabled && (
                   <FormField
                     control={form.control}
                     name="phone"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{baseFields.phone?.label} {baseFields.phone?.required && "*"}</FormLabel>
+                        <FormLabel>
+                          {baseFields.phone.label}
+                          {baseFields.phone.required && <span className="text-destructive ml-1">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input
-                            type="tel"
-                            placeholder={baseFields.phone?.placeholder || ""}
-                            {...field}
-                            data-testid="input-phone"
-                          />
+                          <Input type="tel" placeholder={baseFields.phone.placeholder || ""} {...field} data-testid="input-phone" />
                         </FormControl>
+                        {baseFields.phone.helpText && (
+                          <FormDescription className="text-sm text-muted-foreground mt-1">
+                            {baseFields.phone.helpText}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
 
-                {baseFields.organization?.enabled && baseFields.organization && (
+                {baseFields.organization?.enabled && (
                   <FormField
                     control={form.control}
                     name="organization"
                     render={({ field }) => (
                       <FormItem>
-                        <FormLabel>{baseFields.organization?.label} {baseFields.organization?.required && "*"}</FormLabel>
+                        <FormLabel>
+                          {baseFields.organization.label}
+                          {baseFields.organization.required && <span className="text-destructive ml-1">*</span>}
+                        </FormLabel>
                         <FormControl>
-                          <Input
-                            placeholder={baseFields.organization?.placeholder || ""}
-                            {...field}
-                            data-testid="input-organization"
-                          />
+                          <Input placeholder={baseFields.organization.placeholder || ""} {...field} data-testid="input-organization" />
                         </FormControl>
+                        {baseFields.organization.helpText && (
+                          <FormDescription className="text-sm text-muted-foreground mt-1">
+                            {baseFields.organization.helpText}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
                   />
                 )}
 
-                {baseFields.groupSize?.enabled && baseFields.groupSize && (
+                {baseFields.groupSize?.enabled && (
                   <FormField
                     control={form.control}
                     name="groupSize"
@@ -501,6 +515,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             ))}
                           </RadioGroup>
                         </FormControl>
+                        {baseFields.groupSize.helpText && (
+                          <FormDescription className="text-sm text-muted-foreground mt-1">
+                            {baseFields.groupSize.helpText}
+                          </FormDescription>
+                        )}
                         <FormMessage />
                       </FormItem>
                     )}
@@ -527,7 +546,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             onValueChange={(value) => {
                               const count = parseInt(value);
                               setSelectedMemberCount(count);
-                              
+
                               // Adjust team members array
                               const currentCount = teamMemberFields.length;
                               if (count > currentCount) {
@@ -623,7 +642,8 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                       render={({ field }) => (
                         <FormItem>
                           <FormLabel>
-                            {customField.label} {customField.required && "*"}
+                            {customField.label}
+                            {customField.required && <span className="text-destructive ml-1">*</span>}
                           </FormLabel>
                           <FormControl>
                             {customField.type === "textarea" ? (
@@ -711,6 +731,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                               />
                             )}
                           </FormControl>
+                          {customField.helpText && (
+                            <FormDescription className="text-sm text-muted-foreground mt-1">
+                              {customField.helpText}
+                            </FormDescription>
+                          )}
                           <FormMessage />
                         </FormItem>
                       )}

@@ -63,6 +63,7 @@ export const customFieldSchema = z.object({
   placeholder: z.string().optional(),
   required: z.boolean().default(false),
   paymentUrl: z.string().optional(), // For payment link field - allow any string, validate as URL in form builder
+  helpText: z.string().optional(),
 });
 
 export type CustomField = z.infer<typeof customFieldSchema>;
@@ -74,6 +75,7 @@ export const baseFieldConfigSchema = z.object({
   required: z.boolean().default(true),
   enabled: z.boolean().default(true),
   maxTeamMembers: z.number().min(1).max(20).optional(),
+  helpText: z.string().optional(),
 });
 
 export type BaseFieldConfig = z.infer<typeof baseFieldConfigSchema>;

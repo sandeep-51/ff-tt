@@ -285,12 +285,13 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
 
     const payload = {
       ...data,
-      customFields: data.customFields.map(field => ({
+      customFields: data.customFields?.map(field => ({
         id: field.id,
         type: field.type,
         label: field.label,
         placeholder: field.placeholder || "",
         required: field.required,
+        helpText: field.helpText || "",
         ...(field.type === "payment" && { paymentUrl: field.paymentUrl || "" }),
       })),
     };
@@ -539,6 +540,26 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       )}
                     />
                   </div>
+                  <FormField
+                    control={form.control}
+                    name={`baseFields.${fieldName}.helpText` as any}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Help Text / Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Add helpful instructions for users..." 
+                            {...field} 
+                            value={field.value || ""} 
+                            rows={2}
+                            data-testid={`textarea-field-${fieldName}-help`} 
+                          />
+                        </FormControl>
+                        <FormDescription>This note will be shown below the field to guide users</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
                   <FormField
                     control={form.control}
                     name={`baseFields.${fieldName}.required` as any}
@@ -865,41 +886,63 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                       )}
                     />
                   </div>
-                  <div className="flex gap-3 items-end">
+                  <FormField
+                    control={form.control}
+                    name={`customFields.${index}.placeholder`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-sm">Placeholder</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Placeholder text" {...field} value={field.value || ""} data-testid={`input-field-placeholder-${index}`} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  {customField.type === 'payment' && (
                     <FormField
                       control={form.control}
-                      name={`customFields.${index}.placeholder`}
-                      render={({ field }) => (
+                      name={`customFields.${index}.paymentUrl` as any}
+                      render={({ field: paymentUrlField }) => (
                         <FormItem className="flex-1">
-                          <FormLabel className="text-sm">Placeholder</FormLabel>
+                          <FormLabel>Payment Link URL *</FormLabel>
                           <FormControl>
-                            <Input placeholder="Placeholder text" {...field} value={field.value || ""} data-testid={`input-field-placeholder-${index}`} />
+                            <Input
+                              type="url"
+                              placeholder="https://payment-gateway.com/your-link"
+                              {...paymentUrlField}
+                              value={paymentUrlField.value || ""}
+                            />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
                       )}
                     />
+                  )}
 
-                    {customField.type === 'payment' && (
-                      <FormField
-                        control={form.control}
-                        name={`customFields.${index}.paymentUrl` as any}
-                        render={({ field: paymentUrlField }) => (
-                          <FormItem className="flex-1">
-                            <FormLabel>Payment Link URL *</FormLabel>
-                            <FormControl>
-                              <Input
-                                type="url"
-                                placeholder="https://payment-gateway.com/your-link"
-                                {...paymentUrlField}
-                                value={paymentUrlField.value || ""}
-                              />
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                  <FormField
+                    control={form.control}
+                    name={`customFields.${index}.helpText`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-sm">Help Text / Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Add helpful instructions for users..." 
+                            {...field} 
+                            value={field.value || ""} 
+                            rows={2}
+                            data-testid={`textarea-field-help-${index}`} 
+                          />
+                        </FormControl>
+                        <FormDescription>This note will be shown below the field to guide users</FormDescription>
+                        <FormMessage />
+                      </FormItem>
                     )}
+                  />
+
+                  <div className="flex gap-3 items-end">
 
                     <FormField
                       control={form.control}
