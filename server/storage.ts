@@ -4,7 +4,8 @@ import { ticketDb } from "./database";
 export interface IStorage {
   createRegistration(data: InsertRegistration): Promise<Registration>;
   getRegistration(id: string): Promise<Registration | undefined>;
-  getAllRegistrations(): Promise<Registration[]>;
+  getAllRegistrations(limit?: number, offset?: number): Promise<Registration[]>;
+  getRegistrationsCount(): Promise<number>;
   generateQRCode(id: string, qrCodeData: string): Promise<boolean>;
   verifyAndScan(ticketId: string): Promise<{ valid: boolean; registration?: Registration; message: string }>;
   getStats(): Promise<{
@@ -23,7 +24,8 @@ export interface IStorage {
   deleteEventForm(id: number): Promise<boolean>;
   deleteRegistration(id: string): Promise<boolean>;
   revokeQRCode(id: string): Promise<boolean>;
-  getRegistrationsByFormId(formId: number): Promise<Registration[]>;
+  getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Promise<Registration[]>;
+  getRegistrationsByFormIdCount(formId: number): Promise<number>;
   getFormStats(formId: number): Promise<any>;
 }
 
@@ -36,12 +38,20 @@ export class SqliteStorage implements IStorage {
     return ticketDb.getRegistration(id);
   }
 
-  async getAllRegistrations(): Promise<Registration[]> {
-    return ticketDb.getAllRegistrations();
+  async getAllRegistrations(limit?: number, offset?: number): Promise<Registration[]> {
+    return ticketDb.getAllRegistrations(limit, offset);
   }
 
-  async getRegistrationsByFormId(formId: number): Promise<Registration[]> {
-    return ticketDb.getRegistrationsByFormId(formId);
+  async getRegistrationsCount(): Promise<number> {
+    return ticketDb.getRegistrationsCount();
+  }
+
+  async getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Promise<Registration[]> {
+    return ticketDb.getRegistrationsByFormId(formId, limit, offset);
+  }
+
+  async getRegistrationsByFormIdCount(formId: number): Promise<number> {
+    return ticketDb.getRegistrationsByFormIdCount(formId);
   }
 
   async getFormStats(formId: number) {

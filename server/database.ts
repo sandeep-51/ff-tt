@@ -7,6 +7,14 @@ const db = new Database("tickets.db");
 // Enable WAL mode for better concurrent access
 db.pragma("journal_mode = WAL");
 
+// Performance optimizations for handling large datasets
+db.pragma("synchronous = NORMAL");
+db.pragma("cache_size = -64000"); // 64MB cache
+db.pragma("temp_store = MEMORY");
+db.pragma("mmap_size = 30000000000"); // 30GB memory-mapped I/O
+db.pragma("page_size = 4096");
+db.pragma("busy_timeout = 5000");
+
 // Migration: Add formId column if it doesn't exist
 try {
   db.exec(`ALTER TABLE registrations ADD COLUMN formId INTEGER`);
@@ -202,8 +210,8 @@ export class TicketDatabase {
     };
   }
 
-  getAllRegistrations(): Registration[] {
-    const stmt = this.db.prepare(`
+  getAllRegistrations(limit?: number, offset?: number): Registration[] {
+    let query = `
       SELECT
         id,
         name,
@@ -222,8 +230,16 @@ export class TicketDatabase {
         teamMembers
       FROM registrations
       ORDER BY createdAt DESC
-    `);
+    `;
+    
+    if (limit !== undefined) {
+      query += ` LIMIT ${limit}`;
+      if (offset !== undefined) {
+        query += ` OFFSET ${offset}`;
+      }
+    }
 
+    const stmt = this.db.prepare(query);
     const rows = stmt.all() as any[];
     return rows.map((row) => ({
       ...row,
@@ -236,8 +252,14 @@ export class TicketDatabase {
     }));
   }
 
-  getRegistrationsByFormId(formId: number): Registration[] {
-    const stmt = this.db.prepare(`
+  getRegistrationsCount(): number {
+    const stmt = this.db.prepare("SELECT COUNT(*) as count FROM registrations");
+    const result = stmt.get() as { count: number };
+    return result.count;
+  }
+
+  getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Registration[] {
+    let query = `
       SELECT
         id,
         name,
@@ -256,7 +278,16 @@ export class TicketDatabase {
         teamMembers
       FROM registrations
       WHERE formId = ? ORDER BY createdAt DESC
-    `);
+    `;
+    
+    if (limit !== undefined) {
+      query += ` LIMIT ${limit}`;
+      if (offset !== undefined) {
+        query += ` OFFSET ${offset}`;
+      }
+    }
+
+    const stmt = this.db.prepare(query);
     const rows = stmt.all(formId) as any[];
     return rows.map((row) => ({
       ...row,
@@ -267,6 +298,12 @@ export class TicketDatabase {
       customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
       teamMembers: row.teamMembers ? JSON.parse(row.teamMembers) : [],
     }));
+  }
+
+  getRegistrationsByFormIdCount(formId: number): number {
+    const stmt = this.db.prepare("SELECT COUNT(*) as count FROM registrations WHERE formId = ?");
+    const result = stmt.get(formId) as { count: number };
+    return result.count;
   }
 
   generateQRCode(id: string, qrCodeData: string): boolean {

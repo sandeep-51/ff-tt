@@ -42,6 +42,10 @@ export interface Registration {
 
 interface RegistrationsTableProps {
   registrations?: Registration[];
+  totalCount?: number;
+  currentPage?: number;
+  pageSize?: number;
+  onPageChange?: (page: number) => void;
   onGenerateQR?: (id: string) => void;
   onDeleteRegistration?: (id: string) => void;
   onRevokeQR?: (id: string) => void;
@@ -49,11 +53,17 @@ interface RegistrationsTableProps {
 
 export default function RegistrationsTable({
   registrations = [],
+  totalCount = 0,
+  currentPage = 1,
+  pageSize = 50,
+  onPageChange,
   onGenerateQR,
   onDeleteRegistration,
   onRevokeQR,
 }: RegistrationsTableProps) {
   const [searchQuery, setSearchQuery] = useState("");
+  
+  const totalPages = Math.ceil((totalCount || registrations.length) / pageSize);
 
   const filteredRegistrations = registrations.filter((reg) =>
     Object.values(reg).some((value) =>
@@ -267,6 +277,37 @@ export default function RegistrationsTable({
           ))}
         </CardContent>
       </Card>
+
+      {/* Pagination Controls */}
+      {totalPages > 1 && onPageChange && (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="flex items-center justify-between">
+              <div className="text-sm text-muted-foreground">
+                Page {currentPage} of {totalPages} ({totalCount} total registrations)
+              </div>
+              <div className="flex gap-2">
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPageChange(currentPage - 1)}
+                  disabled={currentPage === 1}
+                >
+                  Previous
+                </Button>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={() => onPageChange(currentPage + 1)}
+                  disabled={currentPage === totalPages}
+                >
+                  Next
+                </Button>
+              </div>
+            </div>
+          </CardContent>
+        </Card>
+      )}
     </div>
   );
 }

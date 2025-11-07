@@ -169,11 +169,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     res.json({ isAdmin: req.session.isAdmin || false });
   });
 
-  // GET /api/admin/registrations - Get all registrations
+  // GET /api/admin/registrations - Get all registrations with pagination
   app.get("/api/admin/registrations", requireAdmin, async (req, res) => {
     try {
-      const registrations = await storage.getAllRegistrations();
-      res.json(registrations);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : undefined;
+      
+      const registrations = await storage.getAllRegistrations(limit, offset);
+      const total = await storage.getRegistrationsCount();
+      
+      res.json({
+        registrations,
+        total,
+        limit,
+        offset
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to fetch registrations" });
     }
@@ -263,12 +273,22 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
-  // GET /api/admin/forms/:formId/registrations - Get registrations for specific form
+  // GET /api/admin/forms/:formId/registrations - Get registrations for specific form with pagination
   app.get("/api/admin/forms/:formId/registrations", requireAdmin, async (req, res) => {
     try {
       const formId = parseInt(req.params.formId);
-      const registrations = await storage.getRegistrationsByFormId(formId);
-      res.json(registrations);
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
+      const offset = req.query.offset ? parseInt(req.query.offset as string) : undefined;
+      
+      const registrations = await storage.getRegistrationsByFormId(formId, limit, offset);
+      const total = await storage.getRegistrationsByFormIdCount(formId);
+      
+      res.json({
+        registrations,
+        total,
+        limit,
+        offset
+      });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to fetch form registrations" });
     }
@@ -292,6 +312,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const format = req.query.format as string || "csv";
       const filter = req.query.filter as string || "all";
 
+      // Fetch all for export (no pagination limit)
       let registrations = await storage.getRegistrationsByFormId(formId);
 
       // Apply filter

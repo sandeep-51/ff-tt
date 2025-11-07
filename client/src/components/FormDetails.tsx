@@ -1,4 +1,3 @@
-
 import { Button } from "@/components/ui/button";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { ArrowLeft } from "lucide-react";
@@ -9,6 +8,8 @@ import ExportData from "./ExportData";
 import { useQuery } from "@tanstack/react-query";
 import { useToast } from "@/hooks/use-toast";
 import { queryClient, apiRequest } from "@/lib/queryClient";
+import { useState } from "react";
+import { useNavigate } from "react-router-dom";
 
 interface FormDetailsProps {
   formId: number;
@@ -17,18 +18,28 @@ interface FormDetailsProps {
 
 export default function FormDetails({ formId, onBack }: FormDetailsProps) {
   const { toast } = useToast();
+  const navigate = useNavigate();
+  const [currentPage, setCurrentPage] = useState(1);
+  const pageSize = 50;
 
-  // Fetch registrations for this specific form
-  const { data: registrations = [], refetch: refetchRegistrations } = useQuery<Registration[]>({
-    queryKey: [`/api/admin/forms/${formId}/registrations`],
+  // Fetch registrations for this specific form with pagination
+  const { data: registrationsData, isLoading: loadingRegistrations, refetch: refetchRegistrations } = useQuery<{
+    registrations: Registration[];
+    total: number;
+  }>({
+    queryKey: [`/api/admin/forms/${formId}/registrations?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`],
     queryFn: async () => {
-      const response = await fetch(`/api/admin/forms/${formId}/registrations`, {
+      const response = await fetch(`/api/admin/forms/${formId}/registrations?limit=${pageSize}&offset=${(currentPage - 1) * pageSize}`, {
         credentials: "include",
       });
       if (!response.ok) throw new Error("Failed to fetch registrations");
       return response.json();
     },
+    enabled: !!formId,
   });
+
+  const registrations = registrationsData?.registrations || [];
+  const totalCount = registrationsData?.total || 0;
 
   // Fetch stats for this form
   const { data: stats, refetch: refetchStats } = useQuery<{
@@ -233,6 +244,24 @@ export default function FormDetails({ formId, onBack }: FormDetailsProps) {
             onDeleteRegistration={handleDeleteRegistration}
             onRevokeQR={handleRevokeQR}
           />
+          {/* Pagination controls would go here, updating currentPage */}
+          <div className="flex justify-center mt-4">
+            <Button
+              onClick={() => setCurrentPage(prev => Math.max(prev - 1, 1))}
+              disabled={currentPage === 1 || loadingRegistrations}
+              variant="outline"
+            >
+              Previous
+            </Button>
+            <span className="mx-4 flex items-center">{currentPage} / {Math.ceil(totalCount / pageSize)}</span>
+            <Button
+              onClick={() => setCurrentPage(prev => Math.min(prev + 1, Math.ceil(totalCount / pageSize)))}
+              disabled={currentPage === Math.ceil(totalCount / pageSize) || loadingRegistrations}
+              variant="outline"
+            >
+              Next
+            </Button>
+          </div>
         </TabsContent>
 
         <TabsContent value="generate">
