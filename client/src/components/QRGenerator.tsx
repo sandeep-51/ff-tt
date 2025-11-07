@@ -193,9 +193,16 @@ export default function QRGenerator({
                       </Button>
                     </div>
 
-                    <div className="flex items-center gap-2 text-sm text-primary">
-                      <CheckCircle2 className="h-4 w-4" />
-                      <span>QR Code Generated • {reg.scans}/{reg.maxScans} scans used</span>
+                    <div className="space-y-2">
+                      <div className="flex items-center gap-2 text-sm text-primary">
+                        <CheckCircle2 className="h-4 w-4" />
+                        <span>QR Code Generated • {reg.scans}/{reg.maxScans} scans used</span>
+                      </div>
+                      {reg.email && (
+                        <div className="flex items-center gap-2 text-xs text-muted-foreground">
+                          <span>✉️ QR code sent to {reg.email}</span>
+                        </div>
+                      )}
                     </div>
                   </CardContent>
                 </Card>

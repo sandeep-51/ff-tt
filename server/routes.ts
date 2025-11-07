@@ -10,6 +10,7 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@shared/schema";
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
+import { sendQRCodeEmail, isEmailConfigured } from "./email";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || "eventadmin@1111";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
@@ -219,11 +220,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
       // Get updated registration
       const updatedReg = await storage.getRegistration(id);
 
+      // Send QR code via email
+      let emailSent = false;
+      if (isEmailConfigured() && registration.email) {
+        try {
+          emailSent = await sendQRCodeEmail(registration, qrCodeDataUrl, verificationUrl);
+        } catch (emailError) {
+          console.error("Email sending failed:", emailError);
+          // Don't fail the entire request if email fails
+        }
+      }
+
       res.json({
         success: true,
         registration: updatedReg,
         qrCodeDataUrl,
         verificationUrl,
+        emailSent,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to generate QR code" });
