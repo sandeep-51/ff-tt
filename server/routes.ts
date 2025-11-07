@@ -315,6 +315,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename=form-${formId}-registrations.pdf`);
         res.send(pdf);
+      } else if (format === "xlsx") {
+        const excel = storage.exportToExcel(registrations);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename=form-${formId}-registrations.xlsx`);
+        res.send(excel);
       } else {
         res.status(400).json({ error: "Invalid format" });
       }
@@ -374,47 +379,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         res.setHeader("Content-Disposition", `attachment; filename="registrations-${Date.now()}.csv"`);
         res.send(csvData);
       } else if (format === "pdf") {
-        const doc = new PDFDocument({ margin: 50 });
-
+        const pdf = await storage.exportToPDF(registrations);
         res.setHeader("Content-Type", "application/pdf");
         res.setHeader("Content-Disposition", `attachment; filename="registrations-${Date.now()}.pdf"`);
-
-        doc.pipe(res);
-
-        // Title
-        doc.fontSize(20).text("Event Registration Report", { align: "center" });
-        doc.moveDown();
-        doc.fontSize(12).text(`Generated: ${new Date().toLocaleString()}`, { align: "center" });
-        doc.moveDown(2);
-
-        // Summary
-        const stats = await storage.getStats();
-        doc.fontSize(14).text("Summary", { underline: true });
-        doc.moveDown(0.5);
-        doc.fontSize(11);
-        doc.text(`Total Registrations: ${stats.totalRegistrations}`);
-        doc.text(`QR Codes Generated: ${stats.qrCodesGenerated}`);
-        doc.text(`Total Entries: ${stats.totalEntries}`);
-        doc.text(`Active Registrations: ${stats.activeRegistrations}`);
-        doc.moveDown(2);
-
-        // Registrations list
-        doc.fontSize(14).text("Registrations", { underline: true });
-        doc.moveDown(0.5);
-
-        registrations.forEach((reg, index) => {
-          if (index > 0) doc.moveDown(1);
-
-          doc.fontSize(11);
-          doc.text(`${index + 1}. ${reg.name} (${reg.id})`);
-          doc.fontSize(9);
-          doc.text(`   Email: ${reg.email}`);
-          doc.text(`   Phone: ${reg.phone}`);
-          doc.text(`   Organization: ${reg.organization}`);
-          doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
-        });
-
-        doc.end();
+        res.send(pdf);
+      } else if (format === "xlsx") {
+        const excel = storage.exportToExcel(registrations);
+        res.setHeader("Content-Type", "application/vnd.openxmlformats-officedocument.spreadsheetml.sheet");
+        res.setHeader("Content-Disposition", `attachment; filename="registrations-${Date.now()}.xlsx"`);
+        res.send(excel);
       } else {
         res.status(400).json({ error: "Invalid export format" });
       }
@@ -540,6 +513,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
     } catch (error: any) {
       console.error("Image upload error:", error);
       res.status(500).json({ error: error.message || "Image upload failed" });
+    }
+  });
+
+  // POST /api/upload-photo - Public endpoint for registrants to upload photos
+  app.post("/api/upload-photo", upload.single("photo"), async (req, res) => {
+    try {
+      if (!req.file) {
+        return res.status(400).json({ error: "No photo file provided" });
+      }
+
+      const photoUrl = `/attached_assets/uploads/${req.file.filename}`;
+      res.json({ success: true, photoUrl });
+    } catch (error: any) {
+      console.error("Photo upload error:", error);
+      res.status(500).json({ error: error.message || "Photo upload failed" });
     }
   });
 

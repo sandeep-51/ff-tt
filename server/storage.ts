@@ -101,20 +101,35 @@ export class SqliteStorage implements IStorage {
   }
 
   exportToCSV(registrations: Registration[]): string {
-    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At'];
-    const rows = registrations.map(r => [
-      r.id,
-      r.name,
-      r.email,
-      r.phone,
-      r.organization,
-      r.groupSize.toString(),
-      r.scans.toString(),
-      r.maxScans.toString(),
-      r.hasQR ? 'Yes' : 'No',
-      r.status,
-      r.createdAt
-    ]);
+    const allCustomFieldKeys = new Set<string>();
+    registrations.forEach(r => {
+      if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {
+        Object.keys(r.customFieldData).forEach(key => allCustomFieldKeys.add(key));
+      }
+    });
+
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At', ...Array.from(allCustomFieldKeys)];
+    const rows = registrations.map(r => {
+      const baseRow = [
+        r.id,
+        r.name,
+        r.email,
+        r.phone,
+        r.organization,
+        r.groupSize.toString(),
+        r.scans.toString(),
+        r.maxScans.toString(),
+        r.hasQR ? 'Yes' : 'No',
+        r.status,
+        r.createdAt
+      ];
+      
+      const customFieldValues = Array.from(allCustomFieldKeys).map(key => {
+        return (r.customFieldData && r.customFieldData[key]) || '';
+      });
+      
+      return [...baseRow, ...customFieldValues];
+    });
     
     const csvContent = [
       headers.join(','),
@@ -163,10 +178,50 @@ export class SqliteStorage implements IStorage {
         doc.text(`   Phone: ${reg.phone}`);
         doc.text(`   Organization: ${reg.organization}`);
         doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
+        
+        if (reg.customFieldData && Object.keys(reg.customFieldData).length > 0) {
+          Object.entries(reg.customFieldData).forEach(([key, value]) => {
+            doc.text(`   ${key}: ${value}`);
+          });
+        }
       });
 
       doc.end();
     });
+  }
+
+  exportToExcel(registrations: Registration[]): Buffer {
+    const XLSX = require('xlsx');
+    
+    const rows = registrations.map((r) => {
+      const row: any = {
+        ID: r.id,
+        Name: r.name,
+        Email: r.email,
+        Phone: r.phone,
+        Organization: r.organization,
+        'Group Size': r.groupSize,
+        'Scans Used': r.scans,
+        'Max Scans': r.maxScans,
+        'Has QR': r.hasQR ? 'Yes' : 'No',
+        Status: r.status,
+        'Created At': r.createdAt,
+      };
+      
+      if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {
+        Object.entries(r.customFieldData).forEach(([key, value]) => {
+          row[key] = value;
+        });
+      }
+      
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
 }
 

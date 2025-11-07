@@ -17,6 +17,24 @@ try {
   }
 }
 
+// Migration: Add customFieldData column to registrations if it doesn't exist
+try {
+  db.exec(`ALTER TABLE registrations ADD COLUMN customFieldData TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
+// Migration: Add customFields column to event_forms if it doesn't exist
+try {
+  db.exec(`ALTER TABLE event_forms ADD COLUMN customFields TEXT`);
+} catch (error: any) {
+  if (!error.message.includes("duplicate column name")) {
+    console.error("Migration warning:", error.message);
+  }
+}
+
 // Create tables
 db.exec(`
   CREATE TABLE IF NOT EXISTS registrations (
@@ -32,7 +50,8 @@ db.exec(`
     qrCodeData TEXT,
     status TEXT DEFAULT 'pending',
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
-    formId INTEGER, -- Added formId column
+    formId INTEGER,
+    customFieldData TEXT,
     FOREIGN KEY (formId) REFERENCES event_forms(id)
   );
 
@@ -53,6 +72,7 @@ db.exec(`
     logoUrl TEXT,
     customLinks TEXT,
     description TEXT,
+    customFields TEXT,
     isPublished INTEGER DEFAULT 0,
     createdAt TEXT DEFAULT CURRENT_TIMESTAMP,
     updatedAt TEXT DEFAULT CURRENT_TIMESTAMP
@@ -83,8 +103,8 @@ export class TicketDatabase {
     const maxScans = data.groupSize * 4;
 
     const stmt = this.db.prepare(`
-      INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId, customFieldData)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     stmt.run(
@@ -95,7 +115,8 @@ export class TicketDatabase {
       data.organization,
       data.groupSize,
       maxScans,
-      data.formId || null
+      data.formId || null,
+      data.customFieldData ? JSON.stringify(data.customFieldData) : null
     );
 
     const registration = this.getRegistration(id);
@@ -121,7 +142,8 @@ export class TicketDatabase {
         qrCodeData,
         status,
         createdAt,
-        formId
+        formId,
+        customFieldData
       FROM registrations
       WHERE id = ?
     `);
@@ -132,6 +154,7 @@ export class TicketDatabase {
     return {
       ...row,
       hasQR: Boolean(row.hasQR),
+      customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
     };
   }
 
@@ -150,7 +173,8 @@ export class TicketDatabase {
         qrCodeData,
         status,
         createdAt,
-        formId
+        formId,
+        customFieldData
       FROM registrations
       ORDER BY createdAt DESC
     `);
@@ -159,6 +183,7 @@ export class TicketDatabase {
     return rows.map((row) => ({
       ...row,
       hasQR: Boolean(row.hasQR),
+      customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
     }));
   }
 
@@ -177,7 +202,8 @@ export class TicketDatabase {
         qrCodeData,
         status,
         createdAt,
-        formId
+        formId,
+        customFieldData
       FROM registrations
       WHERE formId = ? ORDER BY createdAt DESC
     `);
@@ -185,6 +211,7 @@ export class TicketDatabase {
     return rows.map((row) => ({
       ...row,
       hasQR: Boolean(row.hasQR),
+      customFieldData: row.customFieldData ? JSON.parse(row.customFieldData) : {},
     }));
   }
 
@@ -351,10 +378,11 @@ export class TicketDatabase {
     logoUrl?: string;
     customLinks?: Array<{ label: string; url: string }>;
     description?: string;
+    customFields?: any[];
   }) {
     const stmt = this.db.prepare(`
-      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description)
-      VALUES (?, ?, ?, ?, ?, ?, ?)
+      INSERT INTO event_forms (title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?)
     `);
 
     const result = stmt.run(
@@ -364,7 +392,8 @@ export class TicketDatabase {
       data.watermarkUrl || null,
       data.logoUrl || null,
       data.customLinks ? JSON.stringify(data.customLinks) : null,
-      data.description || null
+      data.description || null,
+      data.customFields ? JSON.stringify(data.customFields) : null
     );
 
     return this.getEventForm(Number(result.lastInsertRowid));
@@ -372,7 +401,7 @@ export class TicketDatabase {
 
   getEventForm(id: number) {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE id = ?
     `);
@@ -384,12 +413,13 @@ export class TicketDatabase {
       ...row,
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
+      customFields: row.customFields ? JSON.parse(row.customFields) : [],
     };
   }
 
   getPublishedForm() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
       FROM event_forms
       WHERE isPublished = 1
       ORDER BY updatedAt DESC
@@ -403,12 +433,13 @@ export class TicketDatabase {
       ...row,
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
+      customFields: row.customFields ? JSON.parse(row.customFields) : [],
     };
   }
 
   getAllEventForms() {
     const stmt = this.db.prepare(`
-      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, isPublished, createdAt, updatedAt
+      SELECT id, title, subtitle, heroImageUrl, watermarkUrl, logoUrl, customLinks, description, customFields, isPublished, createdAt, updatedAt
       FROM event_forms
       ORDER BY updatedAt DESC
     `);
@@ -418,6 +449,7 @@ export class TicketDatabase {
       ...row,
       isPublished: Boolean(row.isPublished),
       customLinks: row.customLinks ? JSON.parse(row.customLinks) : [],
+      customFields: row.customFields ? JSON.parse(row.customFields) : [],
     }));
   }
 
@@ -429,6 +461,7 @@ export class TicketDatabase {
     logoUrl?: string;
     customLinks?: Array<{ label: string; url: string }>;
     description?: string;
+    customFields?: any[];
   }) {
     const updates: string[] = [];
     const values: any[] = [];
@@ -460,6 +493,10 @@ export class TicketDatabase {
     if (data.description !== undefined) {
       updates.push("description = ?");
       values.push(data.description || null);
+    }
+    if (data.customFields !== undefined) {
+      updates.push("customFields = ?");
+      values.push(JSON.stringify(data.customFields));
     }
 
     if (updates.length === 0) return false;

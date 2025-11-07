@@ -16,10 +16,13 @@ import {
 import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { Upload, Loader2, Plus, Trash2, Eye, Globe } from "lucide-react";
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
-import type { EventForm } from "@shared/schema";
+import type { EventForm, CustomField } from "@shared/schema";
+import { customFieldSchema } from "@shared/schema";
 
 const formBuilderSchema = z.object({
   title: z.string().min(1, "Title is required"),
@@ -32,6 +35,7 @@ const formBuilderSchema = z.object({
     label: z.string().min(1, "Label is required"),
     url: z.string().url("Must be a valid URL"),
   })).optional(),
+  customFields: z.array(customFieldSchema).optional(),
 });
 
 type FormBuilderData = z.infer<typeof formBuilderSchema>;
@@ -53,15 +57,22 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
 
   const form = useForm<FormBuilderData>({
     resolver: zodResolver(formBuilderSchema),
-    defaultValues: existingForm || {
+    defaultValues: {
       title: "",
       subtitle: "",
       description: "",
       customLinks: [],
+      customFields: [],
     },
     values: existingForm ? {
-      ...existingForm,
+      title: existingForm.title,
+      subtitle: existingForm.subtitle || undefined,
+      description: existingForm.description || undefined,
+      heroImageUrl: existingForm.heroImageUrl || undefined,
+      watermarkUrl: existingForm.watermarkUrl || undefined,
+      logoUrl: existingForm.logoUrl || undefined,
       customLinks: existingForm.customLinks || [],
+      customFields: existingForm.customFields || [],
     } : undefined,
   });
 
@@ -140,6 +151,23 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
   const removeCustomLink = (index: number) => {
     const links = form.getValues("customLinks") || [];
     form.setValue("customLinks", links.filter((_, i) => i !== index));
+  };
+
+  const addCustomField = () => {
+    const fields = form.getValues("customFields") || [];
+    const newField: CustomField = {
+      id: `field_${Date.now()}`,
+      type: "text",
+      label: "",
+      required: false,
+      placeholder: "",
+    };
+    form.setValue("customFields", [...fields, newField]);
+  };
+
+  const removeCustomField = (index: number) => {
+    const fields = form.getValues("customFields") || [];
+    form.setValue("customFields", fields.filter((_, i) => i !== index));
   };
 
   const handleSubmit = (data: FormBuilderData) => {
@@ -421,6 +449,108 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               >
                 <Plus className="h-4 w-4 mr-2" />
                 Add Link
+              </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Custom Form Fields</CardTitle>
+              <CardDescription>Add additional fields for registrants to fill (photo upload, URLs, etc.)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(form.watch("customFields") || []).map((field, index) => (
+                <div key={field.id} className="p-4 border rounded-md space-y-4">
+                  <div className="flex gap-4">
+                    <FormField
+                      control={form.control}
+                      name={`customFields.${index}.type`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Field Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-field-type-${index}`}>
+                                <SelectValue placeholder="Select field type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="phone">Phone</SelectItem>
+                              <SelectItem value="textarea">Long Text</SelectItem>
+                              <SelectItem value="url">URL</SelectItem>
+                              <SelectItem value="photo">Photo Upload</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`customFields.${index}.label`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Field Label *</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., Company Website" {...field} data-testid={`input-field-label-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="flex gap-4 items-end">
+                    <FormField
+                      control={form.control}
+                      name={`customFields.${index}.placeholder`}
+                      render={({ field }) => (
+                        <FormItem className="flex-1">
+                          <FormLabel>Placeholder</FormLabel>
+                          <FormControl>
+                            <Input placeholder="e.g., https://example.com" {...field} value={field.value || ""} data-testid={`input-field-placeholder-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`customFields.${index}.required`}
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid={`checkbox-field-required-${index}`}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm font-normal">Required</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => removeCustomField(index)}
+                      data-testid={`button-remove-field-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <Button
+                type="button"
+                variant="outline"
+                onClick={addCustomField}
+                data-testid="button-add-custom-field"
+              >
+                <Plus className="h-4 w-4 mr-2" />
+                Add Custom Field
               </Button>
             </CardContent>
           </Card>

@@ -1,4 +1,4 @@
-import { useState } from "react";
+import { useState, useMemo } from "react";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
 import { z } from "zod";
@@ -13,24 +13,52 @@ import {
   FormMessage,
 } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
-import type { EventForm } from "@shared/schema";
+import type { EventForm, CustomField } from "@shared/schema";
 
-const registrationSchema = z.object({
-  name: z.string().min(2, "Name must be at least 2 characters"),
-  email: z.string().email("Invalid email address"),
-  phone: z.string().min(10, "Phone number must be at least 10 digits"),
-  organization: z.string().min(2, "Organization must be at least 2 characters"),
-  groupSize: z.enum(["1", "2", "3", "4"], {
-    required_error: "Please select group size",
-  }),
-});
+const buildDynamicSchema = (customFields: CustomField[] = []) => {
+  const baseSchema = {
+    name: z.string().min(2, "Name must be at least 2 characters"),
+    email: z.string().email("Invalid email address"),
+    phone: z.string().min(10, "Phone number must be at least 10 digits"),
+    organization: z.string().min(2, "Organization must be at least 2 characters"),
+    groupSize: z.enum(["1", "2", "3", "4"], {
+      required_error: "Please select group size",
+    }),
+  };
 
-type RegistrationFormData = z.infer<typeof registrationSchema>;
+  const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
+  
+  customFields.forEach((field) => {
+    let fieldSchema: z.ZodTypeAny;
+    
+    switch (field.type) {
+      case "email":
+        fieldSchema = z.string().email("Invalid email address");
+        break;
+      case "phone":
+        fieldSchema = z.string().min(10, "Phone number must be at least 10 digits");
+        break;
+      case "url":
+        fieldSchema = z.string().url("Invalid URL");
+        break;
+      case "photo":
+        fieldSchema = z.string().min(1, "Photo is required");
+        break;
+      default:
+        fieldSchema = z.string().min(1, `${field.label} is required`);
+    }
+    
+    customFieldsSchema[field.id] = field.required ? fieldSchema : fieldSchema.optional().or(z.literal(""));
+  });
+
+  return z.object({ ...baseSchema, ...customFieldsSchema });
+};
 
 interface RegistrationFormProps {
   publishedForm: EventForm | null;
@@ -39,6 +67,7 @@ interface RegistrationFormProps {
 export default function RegistrationForm({ publishedForm }: RegistrationFormProps) {
   const { toast } = useToast();
   const [submittedData, setSubmittedData] = useState<any | null>(null);
+  const [uploadingField, setUploadingField] = useState<string | null>(null);
 
   const title = publishedForm?.title || "Event Registration";
   const subtitle = publishedForm?.subtitle || "Register now to receive your secure QR-based entry pass";
@@ -46,23 +75,73 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const watermarkUrl = publishedForm?.watermarkUrl;
   const logoUrl = publishedForm?.logoUrl;
   const customLinks = publishedForm?.customLinks || [];
+  const customFields = publishedForm?.customFields || [];
 
-  const form = useForm<RegistrationFormData>({
+  const registrationSchema = useMemo(() => buildDynamicSchema(customFields), [customFields]);
+  type RegistrationFormData = z.infer<typeof registrationSchema>;
+
+  const defaultValues: any = {
+    name: "",
+    email: "",
+    phone: "",
+    organization: "",
+    groupSize: "1",
+  };
+
+  customFields.forEach((field) => {
+    defaultValues[field.id] = "";
+  });
+
+  const form = useForm<any>({
     resolver: zodResolver(registrationSchema),
-    defaultValues: {
-      name: "",
-      email: "",
-      phone: "",
-      organization: "",
-      groupSize: "1",
+    defaultValues,
+  });
+
+  const uploadPhotoMutation = useMutation({
+    mutationFn: async (file: File) => {
+      const formData = new FormData();
+      formData.append("photo", file);
+      const response = await apiRequest("POST", "/api/upload-photo", formData);
+      return response.json();
     },
   });
 
+  const handlePhotoUpload = async (fieldId: string, file: File) => {
+    setUploadingField(fieldId);
+    try {
+      const result = await uploadPhotoMutation.mutateAsync(file);
+      form.setValue(fieldId, result.photoUrl);
+      toast({
+        title: "Photo Uploaded",
+        description: "Photo has been uploaded successfully",
+      });
+    } catch (error: any) {
+      toast({
+        title: "Upload Failed",
+        description: error.message || "Failed to upload photo",
+        variant: "destructive",
+      });
+    } finally {
+      setUploadingField(null);
+    }
+  };
+
   const mutation = useMutation({
-    mutationFn: async (data: RegistrationFormData) => {
+    mutationFn: async (data: any) => {
+      const customFieldData: Record<string, string> = {};
+      customFields.forEach((field) => {
+        if (data[field.id]) {
+          customFieldData[field.id] = data[field.id];
+        }
+      });
+
       const response = await apiRequest("POST", "/api/register", {
-        ...data,
+        name: data.name,
+        email: data.email,
+        phone: data.phone,
+        organization: data.organization,
         groupSize: parseInt(data.groupSize),
+        customFieldData,
       });
       return response.json();
     },
@@ -82,7 +161,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     },
   });
 
-  const handleSubmit = (data: RegistrationFormData) => {
+  const handleSubmit = (data: any) => {
     mutation.mutate(data);
   };
 
@@ -356,6 +435,74 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                     </FormItem>
                   )}
                 />
+
+                {customFields.map((customField) => (
+                  <FormField
+                    key={customField.id}
+                    control={form.control}
+                    name={customField.id}
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel>
+                          {customField.label} {customField.required && "*"}
+                        </FormLabel>
+                        <FormControl>
+                          {customField.type === "textarea" ? (
+                            <Textarea
+                              placeholder={customField.placeholder || ""}
+                              {...field}
+                              rows={4}
+                              data-testid={`input-custom-${customField.id}`}
+                            />
+                          ) : customField.type === "photo" ? (
+                            <div className="space-y-2">
+                              <Input
+                                type="file"
+                                accept="image/*"
+                                onChange={async (e) => {
+                                  const file = e.target.files?.[0];
+                                  if (file) {
+                                    await handlePhotoUpload(customField.id, file);
+                                    e.target.value = "";
+                                  }
+                                }}
+                                disabled={uploadingField === customField.id}
+                                data-testid={`input-custom-${customField.id}`}
+                              />
+                              {uploadingField === customField.id && (
+                                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                                  <Loader2 className="h-4 w-4 animate-spin" />
+                                  <span>Uploading...</span>
+                                </div>
+                              )}
+                              {field.value && (
+                                <div className="relative w-32 h-32 rounded-md overflow-hidden border">
+                                  <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
+                                </div>
+                              )}
+                            </div>
+                          ) : (
+                            <Input
+                              type={
+                                customField.type === "email"
+                                  ? "email"
+                                  : customField.type === "phone"
+                                  ? "tel"
+                                  : customField.type === "url"
+                                  ? "url"
+                                  : "text"
+                              }
+                              placeholder={customField.placeholder || ""}
+                              {...field}
+                              data-testid={`input-custom-${customField.id}`}
+                            />
+                          )}
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                ))}
 
                 <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
                   <Shield className="h-4 w-4" />
