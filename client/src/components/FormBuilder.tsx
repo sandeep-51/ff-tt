@@ -18,7 +18,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
-import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon, Type, Video, List, GripVertical } from "lucide-react";
+import { Upload, Loader2, Plus, Trash2, Eye, Globe, Image as ImageIcon, Link as LinkIcon, Type, Video, List, GripVertical, Mail, Phone, AlignLeft, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import type { EventForm, CustomField, BaseFieldConfig } from "@shared/schema";
@@ -57,20 +57,21 @@ interface FormBuilderProps {
 
 // Toolbar element types
 type ToolbarElement = {
-  type: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' | 'video' | 'image';
+  type: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' | 'image' | 'video' | 'payment';
   icon: React.ReactNode;
   label: string;
 };
 
 const toolbarElements: ToolbarElement[] = [
   { type: 'text', icon: <Type className="h-5 w-5" />, label: 'Text Field' },
-  { type: 'textarea', icon: <Type className="h-5 w-5" />, label: 'Long Text' },
-  { type: 'email', icon: <Type className="h-5 w-5" />, label: 'Email' },
-  { type: 'phone', icon: <Type className="h-5 w-5" />, label: 'Phone' },
-  { type: 'url', icon: <LinkIcon className="h-5 w-5" />, label: 'URL' },
+  { type: 'email', icon: <Mail className="h-5 w-5" />, label: 'Email Field' },
+  { type: 'phone', icon: <Phone className="h-5 w-5" />, label: 'Phone Field' },
+  { type: 'textarea', icon: <AlignLeft className="h-5 w-5" />, label: 'Text Area' },
+  { type: 'url', icon: <LinkIcon className="h-5 w-5" />, label: 'URL Field' },
   { type: 'photo', icon: <ImageIcon className="h-5 w-5" />, label: 'Photo Upload' },
   { type: 'image', icon: <ImageIcon className="h-5 w-5" />, label: 'Image Display' },
   { type: 'video', icon: <Video className="h-5 w-5" />, label: 'Video' },
+  { type: 'payment', icon: <DollarSign className="h-5 w-5" />, label: 'Payment Link' },
 ];
 
 export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
@@ -202,7 +203,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
     form.setValue("customLinks", links.filter((_, i) => i !== index));
   };
 
-  const addCustomField = (fieldType: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' = 'text') => {
+  const addCustomField = (fieldType: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' | 'payment' = 'text') => {
     const fields = form.getValues("customFields") || [];
     const newField: CustomField = {
       id: `field_${Date.now()}`,
@@ -211,11 +212,14 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       required: false,
       placeholder: "",
     };
+    if (fieldType === 'payment') {
+      (newField as any).paymentUrl = ""; // Add paymentUrl property for payment type
+    }
     form.setValue("customFields", [...fields, newField]);
   };
 
   const addElementFromToolbar = (elementType: ToolbarElement['type']) => {
-    if (['text', 'email', 'phone', 'textarea', 'url', 'photo'].includes(elementType)) {
+    if (['text', 'email', 'phone', 'textarea', 'url', 'photo', 'payment'].includes(elementType)) {
       addCustomField(elementType as any);
       toast({
         title: "Field Added",
@@ -727,8 +731,8 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               <CardDescription>Add additional fields for registrants to fill. Use the toolbar on the left to quickly add elements.</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              {(form.watch("customFields") || []).map((field, index) => (
-                <div key={field.id} className="p-4 border rounded-md space-y-3">
+              {(form.watch("customFields") || []).map((customField, index) => (
+                <div key={customField.id} className="p-4 border rounded-md space-y-3">
                   <div className="grid grid-cols-2 gap-3">
                     <FormField
                       control={form.control}
@@ -749,6 +753,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                               <SelectItem value="textarea">Long Text</SelectItem>
                               <SelectItem value="url">URL</SelectItem>
                               <SelectItem value="photo">Photo Upload</SelectItem>
+                              <SelectItem value="payment">Payment Link</SelectItem>
                             </SelectContent>
                           </Select>
                           <FormMessage />
@@ -783,6 +788,28 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                         </FormItem>
                       )}
                     />
+
+                    {customField.type === 'payment' && (
+                      <FormField
+                        control={form.control}
+                        name={`customFields.${index}.paymentUrl` as any}
+                        render={({ field }) => (
+                          <FormItem className="flex-1">
+                            <FormLabel>Payment Link URL *</FormLabel>
+                            <FormControl>
+                              <Input
+                                type="url"
+                                placeholder="https://payment-gateway.com/your-link"
+                                {...field}
+                                data-testid={`input-field-payment-url-${index}`}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    )}
+
                     <FormField
                       control={form.control}
                       name={`customFields.${index}.required`}

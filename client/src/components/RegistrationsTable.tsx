@@ -37,6 +37,7 @@ export interface Registration {
   qrCodeData: string | null;
   status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt?: string;
+  customFieldData?: Record<string, any>;
 }
 
 interface RegistrationsTableProps {
@@ -237,6 +238,33 @@ export default function RegistrationsTable({
               </Table>
             </div>
           </div>
+          {/* Display custom field data */}
+          {filteredRegistrations.map((reg) => (
+            reg.customFieldData && Object.keys(reg.customFieldData).length > 0 && (
+              <div key={reg.id} className="mt-4 p-4 border rounded-lg bg-secondary/20">
+                <h4 className="text-lg font-semibold mb-2">Custom Fields for {reg.name}</h4>
+                <div className="mt-2 text-sm space-y-1">
+                  {Object.entries(reg.customFieldData).map(([key, value]) => (
+                    <div key={key} className="flex gap-2">
+                      <span className="font-medium text-muted-foreground">{key}:</span>
+                      {String(value).startsWith('/attached_assets/') ? (
+                        <a
+                          href={value}
+                          target="_blank"
+                          rel="noopener noreferrer"
+                          className="text-primary hover:underline flex items-center gap-1"
+                        >
+                          View Photo
+                        </a>
+                      ) : (
+                        <span className="font-mono text-xs">{value}</span>
+                      )}
+                    </div>
+                  ))}
+                </div>
+              </div>
+            )
+          ))}
         </CardContent>
       </Card>
     </div>

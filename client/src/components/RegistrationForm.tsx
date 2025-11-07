@@ -17,7 +17,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2 } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2, DollarSign } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { EventForm, CustomField } from "@shared/schema";
@@ -621,6 +621,24 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                   <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
                                 </div>
                               )}
+                            </div>
+                          ) : customField.type === "payment" ? (
+                            <div className="space-y-2">
+                              <a
+                                href={customField.paymentUrl}
+                                target="_blank"
+                                rel="noopener noreferrer"
+                                className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors"
+                              >
+                                <DollarSign className="mr-2 h-4 w-4" />
+                                Proceed to Payment
+                              </a>
+                              <Input
+                                type="text"
+                                placeholder="Enter transaction ID after payment"
+                                {...field}
+                                data-testid={`input-custom-${customField.id}`}
+                              />
                             </div>
                           ) : (
                             <Input
