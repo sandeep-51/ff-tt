@@ -10,7 +10,7 @@ import { storage } from "./storage";
 import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@shared/schema";
 import { stringify } from "csv-stringify/sync";
 import PDFDocument from "pdfkit";
-import { sendQRCodeEmail, isEmailConfigured } from "./email";
+import { sendQRCodeEmail, isEmailConfigured, testEmailConnection } from "./email";
 
 const ADMIN_PASSWORD = process.env.ADMIN_PASS || "eventadmin@1111";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
@@ -165,6 +165,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
     });
   });
 
+  // GET /api/admin/test-email - Test email configuration
+  app.get("/api/admin/test-email", requireAdmin, async (req, res) => {
+    try {
+      console.log("Testing email configuration...");
+      const isWorking = await testEmailConnection();
+      res.json({ 
+        success: isWorking,
+        configured: isEmailConfigured(),
+        emailUser: process.env.EMAIL_USER || "NOT SET",
+        message: isWorking ? "Email configuration is working!" : "Email configuration failed"
+      });
+    } catch (error: any) {
+      res.status(500).json({ 
+        success: false,
+        error: error.message 
+      });
+    }
+  });
+
   // GET /api/admin/check - Check if admin is logged in
   app.get("/api/admin/check", async (req, res) => {
     res.json({ isAdmin: req.session.isAdmin || false });
@@ -222,13 +241,25 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Send QR code via email
       let emailSent = false;
+      let emailError = null;
+      
       if (isEmailConfigured() && registration.email) {
+        console.log("🔄 Email is configured, attempting to send...");
         try {
           emailSent = await sendQRCodeEmail(registration, qrCodeDataUrl, verificationUrl);
-        } catch (emailError) {
-          console.error("Email sending failed:", emailError);
-          // Don't fail the entire request if email fails
+          if (!emailSent) {
+            emailError = "Email sending returned false - check server logs";
+            console.error("❌ Email sending failed - returned false");
+          }
+        } catch (error: any) {
+          emailError = error.message;
+          console.error("❌ Email sending exception:", error);
         }
+      } else {
+        console.log("⚠️ Email not configured or no email address");
+        console.log("isEmailConfigured:", isEmailConfigured());
+        console.log("registration.email:", registration.email);
+        emailError = "Email service not configured";
       }
 
       res.json({
@@ -237,6 +268,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
         qrCodeDataUrl,
         verificationUrl,
         emailSent,
+        emailError,
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to generate QR code" });

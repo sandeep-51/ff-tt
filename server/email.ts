@@ -9,12 +9,25 @@ const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
 // Create reusable transporter
 const transporter = nodemailer.createTransport({
-  service: "gmail", // You can change this to your email provider
+  service: "gmail",
+  host: "smtp.gmail.com",
+  port: 587,
+  secure: false, // true for 465, false for other ports
   auth: {
     user: EMAIL_USER,
     pass: EMAIL_PASS,
   },
+  tls: {
+    rejectUnauthorized: false
+  }
 });
+
+// Log configuration on startup
+console.log("📧 Email Service Configuration:");
+console.log("- Service: Gmail");
+console.log("- User:", EMAIL_USER || "NOT CONFIGURED");
+console.log("- Password:", EMAIL_PASS ? "✅ SET (" + EMAIL_PASS.length + " chars)" : "❌ NOT SET");
+console.log("- From:", EMAIL_FROM);
 
 export async function sendQRCodeEmail(
   registration: Registration,
@@ -22,9 +35,18 @@ export async function sendQRCodeEmail(
   verificationUrl: string
 ): Promise<boolean> {
   if (!EMAIL_USER || !EMAIL_PASS) {
-    console.error("Email credentials not configured. Skipping email send.");
+    console.error("❌ Email credentials not configured. Skipping email send.");
+    console.error("EMAIL_USER:", EMAIL_USER);
+    console.error("EMAIL_PASS:", EMAIL_PASS ? "SET" : "NOT SET");
     return false;
   }
+
+  console.log("📧 Attempting to send email to:", registration.email);
+  console.log("Using email config:", {
+    user: EMAIL_USER,
+    from: EMAIL_FROM,
+    service: "gmail"
+  });
 
   try {
     const mailOptions = {
@@ -147,11 +169,34 @@ export async function sendQRCodeEmail(
       `,
     };
 
-    await transporter.sendMail(mailOptions);
-    console.log(`QR code email sent successfully to ${registration.email}`);
+    const info = await transporter.sendMail(mailOptions);
+    console.log(`✅ QR code email sent successfully to ${registration.email}`);
+    console.log("Message ID:", info.messageId);
+    console.log("Response:", info.response);
     return true;
-  } catch (error) {
-    console.error("Error sending QR code email:", error);
+  } catch (error: any) {
+    console.error("❌ Error sending QR code email:");
+    console.error("Error message:", error.message);
+    console.error("Error code:", error.code);
+    console.error("Full error:", error);
+    return false;
+  }
+}
+
+// Test email configuration
+export async function testEmailConnection(): Promise<boolean> {
+  if (!EMAIL_USER || !EMAIL_PASS) {
+    console.error("❌ Email credentials not configured");
+    return false;
+  }
+
+  try {
+    await transporter.verify();
+    console.log("✅ Email server connection verified successfully");
+    return true;
+  } catch (error: any) {
+    console.error("❌ Email server connection failed:");
+    console.error("Error:", error.message);
     return false;
   }
 }
