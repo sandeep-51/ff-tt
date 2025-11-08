@@ -20,7 +20,9 @@ The app requires the following environment variables. Copy `.env.example` to `.e
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=YourAppName
 DATABASE_NAME=event_registration
 
-# Admin Password (REQUIRED)
+# Admin Password (REQUIRED - SECURITY CRITICAL!)
+# This password protects your entire admin panel
+# Use a strong, unique password - do NOT use the default
 ADMIN_PASS=your_secure_password
 
 # Site URL (REQUIRED - your deployed URL)

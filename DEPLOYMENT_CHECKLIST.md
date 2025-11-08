@@ -6,7 +6,7 @@ Use this checklist to ensure your deployment is configured correctly.
 
 - [ ] `MONGODB_URI` - Your MongoDB connection string
 - [ ] `DATABASE_NAME` - Database name (default: event_registration)
-- [ ] `ADMIN_PASS` - Strong admin password
+- [ ] `ADMIN_PASS` - **SECURITY CRITICAL** - Strong admin password (NOT the default!)
 - [ ] `SESSION_SECRET` - Random secret key (use: `node -e "console.log(require('crypto').randomBytes(32).toString('hex'))"`)
 - [ ] `NODE_ENV` - **MUST be set to `production`**
 - [ ] `SITE_URL` - Your deployed URL (e.g., https://yourdomain.com)

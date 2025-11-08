@@ -54,21 +54,51 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
-  // Validate critical environment variables
-  const requiredEnvVars = ['SESSION_SECRET', 'SITE_URL', 'NODE_ENV'];
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  // In production, REFUSE to start without proper security configuration
+  if (isProduction) {
+    const securityIssues: string[] = [];
+    
+    if (!process.env.ADMIN_PASS || process.env.ADMIN_PASS === 'eventadmin@1111') {
+      securityIssues.push('ADMIN_PASS is not set or using default value');
+    }
+    
+    if (!process.env.SESSION_SECRET || process.env.SESSION_SECRET === 'event-registration-secret') {
+      securityIssues.push('SESSION_SECRET is not set or using default value');
+    }
+    
+    if (!process.env.SITE_URL) {
+      securityIssues.push('SITE_URL is not set');
+    }
+    
+    if (securityIssues.length > 0) {
+      console.error('\n❌ FATAL: Cannot start in production mode with insecure configuration!\n');
+      securityIssues.forEach(issue => console.error(`   - ${issue}`));
+      console.error('\n🔒 Required for production:');
+      console.error('   - ADMIN_PASS: Set a strong unique password');
+      console.error('   - SESSION_SECRET: Generate with: node -e "console.log(require(\'crypto\').randomBytes(32).toString(\'hex\'))"');
+      console.error('   - SITE_URL: Set your deployed URL\n');
+      process.exit(1); // Refuse to start
+    }
+  }
+  
+  // Validate critical environment variables (warnings for development)
+  const requiredEnvVars = ['SESSION_SECRET', 'SITE_URL', 'NODE_ENV', 'ADMIN_PASS'];
   const missingVars = requiredEnvVars.filter(v => !process.env[v]);
   
-  if (missingVars.length > 0) {
-    console.error('⚠️  ERROR: Missing critical environment variables:', missingVars.join(', '));
-    console.error('⚠️  Set NODE_ENV=production for deployment!');
-    console.error('⚠️  Sessions may not work correctly without proper configuration.');
+  if (!isProduction && missingVars.length > 0) {
+    console.warn('⚠️  WARNING: Missing environment variables:', missingVars.join(', '));
+    console.warn('⚠️  Using defaults for development. Set these for production!');
   }
   
-  if (process.env.SESSION_SECRET === 'event-registration-secret' || !process.env.SESSION_SECRET) {
-    console.error('⚠️  ERROR: Using default SESSION_SECRET. Generate a secure secret for production!');
+  if (!isProduction && (process.env.SESSION_SECRET === 'event-registration-secret' || !process.env.SESSION_SECRET)) {
+    console.warn('⚠️  WARNING: Using default SESSION_SECRET (development only)');
   }
   
-  const isProduction = process.env.NODE_ENV === 'production';
+  if (!isProduction && (process.env.ADMIN_PASS === 'eventadmin@1111' || !process.env.ADMIN_PASS)) {
+    console.warn('⚠️  WARNING: Using default ADMIN_PASS (development only)');
+  }
   
   if (!isProduction && process.env.SITE_URL?.startsWith('https://')) {
     console.warn('⚠️  WARNING: HTTPS detected but NODE_ENV is not "production". Set NODE_ENV=production for proper cookie handling.');
