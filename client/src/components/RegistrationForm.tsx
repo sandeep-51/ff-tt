@@ -62,8 +62,6 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     phone: z.string().min(10, "Phone number is required (minimum 10 digits)"),
   })).min(1, "At least one team member is required");
 
-  baseSchema.teamMemberCount = z.string().min(1, "Please select number of team members");
-
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
 
   customFields.forEach((field) => {
@@ -144,8 +142,13 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.organization?.enabled) defaultValues.organization = "";
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
 
-  defaultValues.teamMembers = [{ name: "", email: "", phone: "" }];
-  defaultValues.teamMemberCount = "1";
+  // Initialize team members array based on maxTeamMembers configuration
+  const initialMaxMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
+  defaultValues.teamMembers = Array.from({ length: initialMaxMembers }, () => ({ 
+    name: "", 
+    email: "", 
+    phone: "" 
+  }));
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -157,7 +160,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   });
 
   const maxTeamMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
-  const [selectedMemberCount, setSelectedMemberCount] = useState(1);
 
   const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
     control: form.control,
@@ -559,53 +561,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                     )}
                   </CardHeader>
                   <CardContent className="space-y-4">
-                    {/* Member Count Selector */}
-                    <FormField
-                      control={form.control}
-                      name="teamMemberCount"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>Number of Team Members *</FormLabel>
-                          <Select
-                            onValueChange={(value) => {
-                              const count = parseInt(value);
-                              setSelectedMemberCount(count);
-
-                              // Adjust team members array
-                              const currentCount = teamMemberFields.length;
-                              if (count > currentCount) {
-                                for (let i = currentCount; i < count; i++) {
-                                  appendTeamMember({ name: "", email: "", phone: "" });
-                                }
-                              } else if (count < currentCount) {
-                                for (let i = currentCount - 1; i >= count; i--) {
-                                  removeTeamMember(i);
-                                }
-                              }
-                              field.onChange(value);
-                            }}
-                            defaultValue="1"
-                          >
-                            <FormControl>
-                              <SelectTrigger data-testid="select-member-count">
-                                <SelectValue placeholder="Select number of members" />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              {Array.from({ length: maxTeamMembers }, (_, i) => i + 1).map((num) => (
-                                <SelectItem key={num} value={num.toString()}>
-                                  {num} {num === 1 ? 'Member' : 'Members'}
-                                </SelectItem>
-                              ))}
-                            </SelectContent>
-                          </Select>
-                          <FormDescription>
-                            Maximum {maxTeamMembers} members allowed per registration
-                          </FormDescription>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
+                    <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
+                      <p className="text-sm text-muted-foreground">
+                        Please fill in details for all {maxTeamMembers} team {maxTeamMembers === 1 ? 'member' : 'members'}
+                      </p>
+                    </div>
 
                     {/* Team Member Details */}
                     {teamMemberFields.map((field, index) => (
