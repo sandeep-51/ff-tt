@@ -2,8 +2,12 @@ import { MongoClient, Db, ObjectId } from "mongodb";
 import { nanoid } from "nanoid";
 import type { Registration, InsertRegistration, ScanHistory } from "@shared/schema";
 
-const MONGODB_URI = process.env.MONGODB_URI || "mongodb+srv://sandeepnath801051_db_user:AzcldlJxLtyzOr6O@cluster0.vm6uex5.mongodb.net/?appName=Cluster0";
+const MONGODB_URI = process.env.MONGODB_URI;
 const DATABASE_NAME = process.env.DATABASE_NAME || "event_registration";
+
+if (!MONGODB_URI) {
+  throw new Error("MONGODB_URI environment variable is required. Please set it in your environment or .env file.");
+}
 
 let client: MongoClient;
 let db: Db;
@@ -25,6 +29,7 @@ async function connectToDatabase() {
       await db.collection("registrations").createIndex({ formId: 1 });
       await db.collection("scan_history").createIndex({ ticketId: 1 });
       await db.collection("event_forms").createIndex({ isPublished: 1 });
+      await db.collection("event_forms").createIndex({ id: 1 });
 
       console.log("✅ Connected to MongoDB successfully!");
     } catch (error) {
@@ -78,7 +83,7 @@ export class TicketDatabase {
   async getRegistration(id: string): Promise<Registration | undefined> {
     const database = await this.getDb();
     const registration = await database.collection("registrations").findOne({ id });
-    return registration as Registration | undefined;
+    return registration as any;
   }
 
   async getAllRegistrations(limit?: number, offset?: number): Promise<Registration[]> {
@@ -92,7 +97,7 @@ export class TicketDatabase {
       query = query.limit(limit);
     }
 
-    return await query.toArray() as Registration[];
+    return await query.toArray() as any;
   }
 
   async getRegistrationsCount(): Promise<number> {
@@ -111,7 +116,7 @@ export class TicketDatabase {
       query = query.limit(limit);
     }
 
-    return await query.toArray() as Registration[];
+    return await query.toArray() as any;
   }
 
   async getRegistrationsByFormIdCount(formId: number): Promise<number> {
@@ -188,7 +193,7 @@ export class TicketDatabase {
     return await database.collection("scan_history")
       .find({ ticketId })
       .sort({ scannedAt: -1 })
-      .toArray() as ScanHistory[];
+      .toArray() as any;
   }
 
   async getAllScanHistory(): Promise<ScanHistory[]> {
@@ -196,7 +201,7 @@ export class TicketDatabase {
     return await database.collection("scan_history")
       .find({})
       .sort({ scannedAt: -1 })
-      .toArray() as ScanHistory[];
+      .toArray() as any;
   }
 
   async deleteRegistration(id: string): Promise<boolean> {
@@ -434,6 +439,150 @@ export class TicketDatabase {
     const database = await this.getDb();
     const result = await database.collection("event_forms").deleteOne({ id });
     return result.deletedCount > 0;
+  }
+
+  exportToCSV(registrations: Registration[]): string {
+    const allCustomFieldKeys = new Set<string>();
+    registrations.forEach(r => {
+      if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {
+        Object.keys(r.customFieldData).forEach(key => allCustomFieldKeys.add(key));
+      }
+    });
+
+    const headers = ['ID', 'Name', 'Email', 'Phone', 'Organization', 'Group Size', 'Scans', 'Max Scans', 'Has QR', 'Status', 'Created At', 'Team Members', ...Array.from(allCustomFieldKeys)];
+    const rows = registrations.map(r => {
+      const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
+        ? r.teamMembers.map(m => `${m.name} (${m.email || 'N/A'})`).join('; ')
+        : '';
+
+      const baseRow = [
+        r.id,
+        r.name,
+        r.email,
+        r.phone,
+        r.organization,
+        r.groupSize.toString(),
+        r.scans.toString(),
+        r.maxScans.toString(),
+        r.hasQR ? 'Yes' : 'No',
+        r.status,
+        r.createdAt,
+        teamMembersStr
+      ];
+
+      const customFieldValues = Array.from(allCustomFieldKeys).map(key => {
+        return (r.customFieldData && r.customFieldData[key]) || '';
+      });
+
+      return [...baseRow, ...customFieldValues];
+    });
+
+    const csvContent = [
+      headers.join(','),
+      ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
+    ].join('\n');
+
+    return csvContent;
+  }
+
+  async exportToPDF(registrations: Registration[]): Promise<Buffer> {
+    const PDFDocument = require('pdfkit');
+    const doc = new PDFDocument({ margin: 50 });
+    const chunks: Buffer[] = [];
+
+    return new Promise((resolve, reject) => {
+      doc.on('data', (chunk: Buffer) => chunks.push(chunk));
+      doc.on('end', () => resolve(Buffer.concat(chunks)));
+      doc.on('error', reject);
+
+      // Title
+      doc.fontSize(20).text('Event Registration Report', { align: 'center' });
+      doc.moveDown();
+      doc.fontSize(12).text(`Generated: ${new Date().toLocaleString()}`, { align: 'center' });
+      doc.moveDown(2);
+
+      // Summary
+      doc.fontSize(14).text('Summary', { underline: true });
+      doc.moveDown(0.5);
+      doc.fontSize(11);
+      doc.text(`Total Registrations: ${registrations.length}`);
+      doc.text(`QR Codes Generated: ${registrations.filter(r => r.hasQR).length}`);
+      doc.text(`Total Check-ins: ${registrations.filter(r => r.status === 'checked-in').length}`);
+      doc.moveDown(2);
+
+      // Registrations list
+      doc.fontSize(14).text('Registrations', { underline: true });
+      doc.moveDown(0.5);
+
+      registrations.forEach((reg, index) => {
+        if (index > 0) doc.moveDown(1);
+
+        doc.fontSize(11);
+        doc.text(`${index + 1}. ${reg.name} (${reg.id})`);
+        doc.fontSize(9);
+        doc.text(`   Email: ${reg.email}`);
+        doc.text(`   Phone: ${reg.phone}`);
+        doc.text(`   Organization: ${reg.organization}`);
+        doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
+
+        if (reg.teamMembers && reg.teamMembers.length > 0) {
+          doc.text(`   Team Members:`);
+          reg.teamMembers.forEach((member, idx) => {
+            doc.text(`     ${idx + 1}. ${member.name}${member.email ? ` (${member.email})` : ''}${member.phone ? ` - ${member.phone}` : ''}`);
+          });
+        }
+
+        if (reg.customFieldData && Object.keys(reg.customFieldData).length > 0) {
+          Object.entries(reg.customFieldData).forEach(([key, value]) => {
+            const displayValue = String(value).startsWith('/attached_assets/') 
+              ? `[Photo: ${value}]` 
+              : value;
+            doc.text(`   ${key}: ${displayValue}`);
+          });
+        }
+      });
+
+      doc.end();
+    });
+  }
+
+  exportToExcel(registrations: Registration[]): Buffer {
+    const XLSX = require('xlsx');
+
+    const rows = registrations.map((r) => {
+      const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
+        ? r.teamMembers.map(m => `${m.name}${m.email ? ` (${m.email})` : ''}${m.phone ? ` - ${m.phone}` : ''}`).join('; ')
+        : '';
+
+      const row: any = {
+        ID: r.id,
+        Name: r.name,
+        Email: r.email,
+        Phone: r.phone,
+        Organization: r.organization,
+        'Group Size': r.groupSize,
+        'Scans Used': r.scans,
+        'Max Scans': r.maxScans,
+        'Has QR': r.hasQR ? 'Yes' : 'No',
+        Status: r.status,
+        'Created At': r.createdAt,
+        'Team Members': teamMembersStr,
+      };
+
+      if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {
+        Object.entries(r.customFieldData).forEach(([key, value]) => {
+          row[key] = value;
+        });
+      }
+
+      return row;
+    });
+
+    const worksheet = XLSX.utils.json_to_sheet(rows);
+    const workbook = XLSX.utils.book_new();
+    XLSX.utils.book_append_sheet(workbook, worksheet, 'Registrations');
+
+    return XLSX.write(workbook, { type: 'buffer', bookType: 'xlsx' });
   }
 }
 
