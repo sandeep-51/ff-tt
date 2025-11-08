@@ -1,11 +1,11 @@
 import { z } from "zod";
 
-// Team member schema
+// Team member schema - supports dynamic custom fields
 export const teamMemberSchema = z.object({
-  name: z.string().min(1, "Member name is required"),
-  email: z.string().email("Invalid email").optional(),
+  name: z.string().optional(),
+  email: z.string().optional(),
   phone: z.string().optional(),
-});
+}).catchall(z.string()); // Allow additional string fields for custom data
 
 export type TeamMember = z.infer<typeof teamMemberSchema>;
 
@@ -69,6 +69,16 @@ export const customFieldSchema = z.object({
 
 export type CustomField = z.infer<typeof customFieldSchema>;
 
+// Team member field configuration
+export const teamMemberFieldConfigSchema = z.object({
+  enabled: z.boolean().default(true),
+  required: z.boolean().default(true),
+  label: z.string().optional(),
+  placeholder: z.string().optional(),
+});
+
+export type TeamMemberFieldConfig = z.infer<typeof teamMemberFieldConfigSchema>;
+
 // Base field configuration
 export const baseFieldConfigSchema = z.object({
   label: z.string().min(1, "Label is required"),
@@ -83,6 +93,9 @@ export const baseFieldConfigSchema = z.object({
   memberEmailPlaceholder: z.string().optional(),
   memberPhoneLabel: z.string().optional(),
   memberPhonePlaceholder: z.string().optional(),
+  memberNameConfig: teamMemberFieldConfigSchema.optional(),
+  memberEmailConfig: teamMemberFieldConfigSchema.optional(),
+  memberPhoneConfig: teamMemberFieldConfigSchema.optional(),
   registrationFee: z.number().optional(),
   registrationFeeDescription: z.string().optional(),
 });
@@ -103,6 +116,7 @@ export const eventFormSchema = z.object({
   })).optional(),
   description: z.string().optional(),
   customFields: z.array(customFieldSchema).optional(),
+  teamMemberFields: z.array(customFieldSchema).optional(),
   baseFields: z.object({
     name: baseFieldConfigSchema.optional(),
     email: baseFieldConfigSchema.optional(),
@@ -128,6 +142,7 @@ export interface EventForm {
   customLinks: Array<{ label: string; url: string }>;
   description: string | null;
   customFields: CustomField[];
+  teamMemberFields?: CustomField[];
   baseFields?: {
     name?: BaseFieldConfig;
     email?: BaseFieldConfig;

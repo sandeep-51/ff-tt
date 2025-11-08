@@ -56,17 +56,18 @@ Preferred communication style: Simple, everyday language.
 
 ### Data Storage
 
-**Database**: SQLite with better-sqlite3 driver
-- Database file: `tickets.db`
-- WAL (Write-Ahead Logging) mode enabled for concurrent access
-- No ORM - direct SQL queries for simplicity
+**Database**: MongoDB (cloud-hosted via MongoDB Atlas)
+- Connection via MongoDB Node.js driver
+- Database name: `event_registration` (configurable via DATABASE_NAME env var)
+- Persistent cloud storage with automatic indexing
 
 **Schema Design**:
-- `registrations` table: Stores attendee information, QR status, scan counts, and entry limits
-  - Tracks: id, name, email, phone, organization, groupSize, scans, maxScans, hasQR, qrCodeData, status
-  - Indexed on status and email fields
-- `scan_history` table: Audit log of all QR code scans with foreign key to registrations
-- `event_forms` table: Customizable event form configurations with branding options
+- `registrations` collection: Stores attendee information, QR status, scan counts, and entry limits
+  - Tracks: id, name, email, phone, organization, groupSize, scans, maxScans, hasQR, qrCodeData, status, formId
+  - Indexed on: email, status, formId fields
+- `scan_history` collection: Audit log of all QR code scans with ticket ID references
+- `event_forms` collection: Customizable event form configurations with branding options
+  - Indexed on: isPublished, id fields
 
 **Data Validation**: 
 - Shared Zod schemas between client and server (`shared/schema.ts`)
@@ -114,7 +115,7 @@ Preferred communication style: Simple, everyday language.
 - **File Upload**: `multer` for handling image uploads (hero images, logos, watermarks)
 - **CSV Export**: `csv-stringify` for data export functionality
 - **HTML5 QR Scanner**: `html5-qrcode` for camera-based QR code scanning in browser
-- **Database**: `better-sqlite3` for local SQLite database
+- **Database**: `mongodb` driver for MongoDB cloud database
 
 **External Services**:
 - Google Fonts CDN for Inter and JetBrains Mono fonts
@@ -126,9 +127,11 @@ Preferred communication style: Simple, everyday language.
 - ESBuild for server-side bundling
 
 **Environment Variables**:
-- `DATABASE_URL` - PostgreSQL connection (optional, currently using SQLite)
-- `ADMIN_PASS` - Admin dashboard password
-- `SITE_URL` - Base URL for QR code generation
+- `MONGODB_URI` - MongoDB connection string (required)
+- `DATABASE_NAME` - MongoDB database name (default: event_registration)
+- `ADMIN_PASS` - Admin dashboard password (default: eventadmin@1111)
+- `SITE_URL` - Base URL for QR code generation (default: http://localhost:5000)
+- `SESSION_SECRET` - Session encryption secret (default: event-registration-secret)
 - `NODE_ENV` - Environment mode (development/production)
 
 **Asset Management**:

@@ -26,7 +26,7 @@ import { apiRequest } from "@/lib/queryClient";
 import type { EventForm, CustomField } from "@shared/schema";
 import freeFireBgImage from "@assets/ChatGPT Image Nov 7, 2025, 12_19_25 AM_1762500965547.png";
 
-const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: EventForm['baseFields']) => {
+const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: EventForm['baseFields'], teamMemberFields?: CustomField[]) => {
   const baseSchema: Record<string, z.ZodTypeAny> = {};
 
   // Build base fields schema from configuration
@@ -57,12 +57,57 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     baseSchema.groupSize = baseFields.groupSize.required ? groupSizeSchema : groupSizeSchema.optional();
   }
 
-  // Add team members schema with all fields required
-  baseSchema.teamMembers = z.array(z.object({
-    name: z.string().min(1, "Member name is required"),
-    email: z.string().email("Invalid email").min(1, "Email is required"),
-    phone: z.string().min(10, "Phone number is required (minimum 10 digits)"),
-  })).min(1, "At least one team member is required");
+  // Add team members schema based on configuration
+  if (baseFields?.teamMembers?.enabled) {
+    const teamMemberFieldsSchema: Record<string, z.ZodTypeAny> = {};
+    
+    // Member Name Field
+    const memberNameConfig = baseFields.teamMembers.memberNameConfig;
+    if (memberNameConfig?.enabled !== false) {
+      const nameSchema = z.string().min(1, "Member name is required");
+      teamMemberFieldsSchema.name = memberNameConfig?.required !== false ? nameSchema : nameSchema.optional().or(z.literal(""));
+    }
+    
+    // Member Email Field
+    const memberEmailConfig = baseFields.teamMembers.memberEmailConfig;
+    if (memberEmailConfig?.enabled !== false) {
+      const emailSchema = z.string().email("Invalid email").min(1, "Email is required");
+      teamMemberFieldsSchema.email = memberEmailConfig?.required !== false ? emailSchema : emailSchema.optional().or(z.literal(""));
+    }
+    
+    // Member Phone Field
+    const memberPhoneConfig = baseFields.teamMembers.memberPhoneConfig;
+    if (memberPhoneConfig?.enabled !== false) {
+      const phoneSchema = z.string().min(10, "Phone number is required (minimum 10 digits)");
+      teamMemberFieldsSchema.phone = memberPhoneConfig?.required !== false ? phoneSchema : phoneSchema.optional().or(z.literal(""));
+    }
+    
+    // Add custom team member fields
+    (teamMemberFields || []).forEach((field) => {
+      let fieldSchema: z.ZodTypeAny;
+      
+      switch (field.type) {
+        case "email":
+          fieldSchema = z.string().email("Invalid email address");
+          break;
+        case "phone":
+          fieldSchema = z.string().min(10, "Phone number must be at least 10 digits");
+          break;
+        case "url":
+          fieldSchema = z.string().url("Invalid URL");
+          break;
+        case "photo":
+          fieldSchema = z.string().min(1, "Photo is required");
+          break;
+        default:
+          fieldSchema = z.string().min(1, `${field.label} is required`);
+      }
+      
+      teamMemberFieldsSchema[field.id] = field.required ? fieldSchema : fieldSchema.optional().or(z.literal(""));
+    });
+    
+    baseSchema.teamMembers = z.array(z.object(teamMemberFieldsSchema)).min(1, "At least one team member is required");
+  }
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
 
@@ -109,6 +154,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const logoUrl = publishedForm?.logoUrl;
   const customLinks = publishedForm?.customLinks || [];
   const customFields = publishedForm?.customFields || [];
+  const teamMemberCustomFields = publishedForm?.teamMemberFields || [];
   const successTitle = publishedForm?.successTitle || "Registration Successful!";
   const successMessage = publishedForm?.successMessage || "Thank you for registering. We've received your information.";
   const baseFields = publishedForm?.baseFields || {
@@ -132,7 +178,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     memberPhonePlaceholder: "+1 (555) 123-4567",
   };
 
-  const registrationSchema = useMemo(() => buildDynamicSchema(customFields, baseFields), [customFields, baseFields]);
+  const registrationSchema = useMemo(() => buildDynamicSchema(customFields, baseFields, teamMemberCustomFields), [customFields, baseFields, teamMemberCustomFields]);
   type RegistrationFormData = z.infer<typeof registrationSchema>;
 
   const defaultValues: any = {};
@@ -144,11 +190,30 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
 
   // Initialize team members array with 1 member by default
-  defaultValues.teamMembers = [{ 
-    name: "", 
-    email: "", 
-    phone: "" 
-  }];
+  const teamMemberDefaults: any = {};
+  
+  // Add base fields to defaults
+  const memberNameConfig = teamMembersConfig.memberNameConfig;
+  if (memberNameConfig?.enabled !== false) {
+    teamMemberDefaults.name = "";
+  }
+  
+  const memberEmailConfig = teamMembersConfig.memberEmailConfig;
+  if (memberEmailConfig?.enabled !== false) {
+    teamMemberDefaults.email = "";
+  }
+  
+  const memberPhoneConfig = teamMembersConfig.memberPhoneConfig;
+  if (memberPhoneConfig?.enabled !== false) {
+    teamMemberDefaults.phone = "";
+  }
+  
+  // Add custom fields to defaults
+  teamMemberCustomFields.forEach((field) => {
+    teamMemberDefaults[field.id] = "";
+  });
+  
+  defaultValues.teamMembers = [teamMemberDefaults];
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -609,71 +674,202 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           </Select>
                         </div>
                         
-                        {teamMemberFields.map((field, index) => (
-                          <div key={field.id} className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
-                            <div className="flex items-center justify-between mb-3">
-                              <h4 className="font-medium text-gray-300">Member {index + 1}</h4>
+                        {teamMemberFields.map((field, index) => {
+                          const memberNameConfig = teamMembersConfig.memberNameConfig;
+                          const memberEmailConfig = teamMembersConfig.memberEmailConfig;
+                          const memberPhoneConfig = teamMembersConfig.memberPhoneConfig;
+                          
+                          // Calculate grid columns based on enabled fields
+                          const enabledFieldsCount = [
+                            memberNameConfig?.enabled !== false,
+                            memberEmailConfig?.enabled !== false,
+                            memberPhoneConfig?.enabled !== false
+                          ].filter(Boolean).length;
+                          
+                          const gridColsClass = enabledFieldsCount === 1 ? 'grid-cols-1' : 
+                                               enabledFieldsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 
+                                               'grid-cols-1 md:grid-cols-3';
+                          
+                          return (
+                            <div key={field.id} className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
+                              <div className="flex items-center justify-between mb-3">
+                                <h4 className="font-medium text-gray-300">Member {index + 1}</h4>
+                              </div>
+                              <div className={`grid ${gridColsClass} gap-3`}>
+                                {(memberNameConfig?.enabled !== false) && (
+                                  <FormField
+                                    control={form.control}
+                                    name={`teamMembers.${index}.name`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-gray-400 text-sm">
+                                          {teamMembersConfig.memberNameLabel || "Full Name"}
+                                          {(memberNameConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} 
+                                            {...field} 
+                                            className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                            data-testid={`input-member-${index}-name`} 
+                                          />
+                                        </FormControl>
+                                        <FormMessage className="text-[#ff6b35]" />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                                
+                                {(memberEmailConfig?.enabled !== false) && (
+                                  <FormField
+                                    control={form.control}
+                                    name={`teamMembers.${index}.email`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-gray-400 text-sm">
+                                          {teamMembersConfig.memberEmailLabel || "Email"}
+                                          {(memberEmailConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            type="email" 
+                                            placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} 
+                                            {...field} 
+                                            className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                            data-testid={`input-member-${index}-email`} 
+                                          />
+                                        </FormControl>
+                                        <FormMessage className="text-[#ff6b35]" />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                                
+                                {(memberPhoneConfig?.enabled !== false) && (
+                                  <FormField
+                                    control={form.control}
+                                    name={`teamMembers.${index}.phone`}
+                                    render={({ field }) => (
+                                      <FormItem>
+                                        <FormLabel className="text-gray-400 text-sm">
+                                          {teamMembersConfig.memberPhoneLabel || "Phone Number"}
+                                          {(memberPhoneConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
+                                        </FormLabel>
+                                        <FormControl>
+                                          <Input 
+                                            type="tel" 
+                                            placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} 
+                                            {...field} 
+                                            className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                            data-testid={`input-member-${index}-phone`} 
+                                          />
+                                        </FormControl>
+                                        <FormMessage className="text-[#ff6b35]" />
+                                      </FormItem>
+                                    )}
+                                  />
+                                )}
+                              </div>
+                              
+                              {/* Custom team member fields */}
+                              {teamMemberCustomFields.length > 0 && (
+                                <div className="mt-3 space-y-3">
+                                  {teamMemberCustomFields.map((customField) => (
+                                    <FormField
+                                      key={customField.id}
+                                      control={form.control}
+                                      name={`teamMembers.${index}.${customField.id}`}
+                                      render={({ field }) => (
+                                        <FormItem>
+                                          <FormLabel className="text-gray-400 text-sm">
+                                            {customField.label}
+                                            {customField.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                          </FormLabel>
+                                          <FormControl>
+                                            {customField.type === "textarea" ? (
+                                              <Textarea
+                                                placeholder={customField.placeholder || ""}
+                                                {...field}
+                                                className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                                data-testid={`textarea-member-${index}-${customField.id}`}
+                                              />
+                                            ) : customField.type === "photo" ? (
+                                              <div className="space-y-2">
+                                                <Input
+                                                  type="file"
+                                                  accept="image/*"
+                                                  onChange={async (e) => {
+                                                    const file = e.target.files?.[0];
+                                                    if (file) {
+                                                      setUploadingField(customField.id);
+                                                      try {
+                                                        const formData = new FormData();
+                                                        formData.append("file", file);
+                                                        const result = await apiRequest("/api/upload", {
+                                                          method: "POST",
+                                                          body: formData,
+                                                        });
+                                                        form.setValue(`teamMembers.${index}.${customField.id}`, result.imageUrl);
+                                                        toast({
+                                                          title: "Image Uploaded",
+                                                          description: "Image has been uploaded successfully",
+                                                        });
+                                                      } catch (error: any) {
+                                                        toast({
+                                                          title: "Upload Failed",
+                                                          description: error.message || "Failed to upload image",
+                                                          variant: "destructive",
+                                                        });
+                                                      } finally {
+                                                        setUploadingField(null);
+                                                      }
+                                                    }
+                                                  }}
+                                                  className="bg-[#232835] border-[#2d3548] text-white file:bg-[#ff6b35] file:text-white file:border-0 file:px-4 file:py-2 file:rounded"
+                                                  data-testid={`file-member-${index}-${customField.id}`}
+                                                  disabled={uploadingField === customField.id}
+                                                />
+                                                {uploadingField === customField.id && (
+                                                  <div className="flex items-center gap-2 text-sm text-gray-400">
+                                                    <Loader2 className="h-4 w-4 animate-spin" />
+                                                    <span>Uploading...</span>
+                                                  </div>
+                                                )}
+                                                {field.value && (
+                                                  <div className="mt-2">
+                                                    <img
+                                                      src={field.value}
+                                                      alt="Preview"
+                                                      className="max-w-[200px] rounded border border-[#2d3548]"
+                                                    />
+                                                  </div>
+                                                )}
+                                              </div>
+                                            ) : (
+                                              <Input
+                                                type={customField.type === "email" ? "email" : customField.type === "phone" ? "tel" : customField.type === "url" ? "url" : "text"}
+                                                placeholder={customField.placeholder || ""}
+                                                {...field}
+                                                className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                                data-testid={`input-member-${index}-${customField.id}`}
+                                              />
+                                            )}
+                                          </FormControl>
+                                          {customField.helpText && (
+                                            <FormDescription className="text-gray-500">
+                                              {customField.helpText}
+                                            </FormDescription>
+                                          )}
+                                          <FormMessage className="text-[#ff6b35]" />
+                                        </FormItem>
+                                      )}
+                                    />
+                                  ))}
+                                </div>
+                              )}
                             </div>
-                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                              <FormField
-                                control={form.control}
-                                name={`teamMembers.${index}.name`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberNameLabel || "Full Name"}</FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} 
-                                        {...field} 
-                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                        data-testid={`input-member-${index}-name`} 
-                                      />
-                                    </FormControl>
-                                    <FormMessage className="text-[#ff6b35]" />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`teamMembers.${index}.email`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberEmailLabel || "Email"}</FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        type="email" 
-                                        placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} 
-                                        {...field} 
-                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                        data-testid={`input-member-${index}-email`} 
-                                      />
-                                    </FormControl>
-                                    <FormMessage className="text-[#ff6b35]" />
-                                  </FormItem>
-                                )}
-                              />
-                              <FormField
-                                control={form.control}
-                                name={`teamMembers.${index}.phone`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberPhoneLabel || "Phone Number"}</FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        type="tel" 
-                                        placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} 
-                                        {...field} 
-                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                        data-testid={`input-member-${index}-phone`} 
-                                      />
-                                    </FormControl>
-                                    <FormMessage className="text-[#ff6b35]" />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-                          </div>
-                        ))}
+                          );
+                        })}
                       </div>
                     )}
 

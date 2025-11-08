@@ -37,6 +37,7 @@ const formBuilderSchema = z.object({
     url: z.string().url("Must be a valid URL"),
   })).optional(),
   customFields: z.array(customFieldSchema).optional(),
+  teamMemberFields: z.array(customFieldSchema).optional(),
   baseFields: z.object({
     name: baseFieldConfigSchema.optional(),
     email: baseFieldConfigSchema.optional(),
@@ -95,6 +96,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       backgroundImageUrl: "",
       customLinks: [],
       customFields: [],
+      teamMemberFields: [],
       baseFields: {
         name: { label: "Full Name", placeholder: "John Doe", required: true, enabled: true },
         email: { label: "Email Address", placeholder: "john.doe@example.com", required: true, enabled: true },
@@ -112,7 +114,10 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
           memberEmailLabel: "Email",
           memberEmailPlaceholder: "member@example.com",
           memberPhoneLabel: "Phone Number",
-          memberPhonePlaceholder: "+1 (555) 123-4567"
+          memberPhonePlaceholder: "+1 (555) 123-4567",
+          memberNameConfig: { enabled: true, required: true, label: "Full Name", placeholder: "Enter member name" },
+          memberEmailConfig: { enabled: true, required: true, label: "Email", placeholder: "member@example.com" },
+          memberPhoneConfig: { enabled: true, required: true, label: "Phone Number", placeholder: "+1 (555) 123-4567" },
         },
       },
       successTitle: "",
@@ -128,6 +133,7 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       logoUrl: existingForm.logoUrl || undefined,
       customLinks: existingForm.customLinks || [],
       customFields: existingForm.customFields || [],
+      teamMemberFields: existingForm.teamMemberFields || [],
       baseFields: existingForm.baseFields || {
         name: { label: "Full Name", placeholder: "John Doe", required: true, enabled: true },
         email: { label: "Email Address", placeholder: "john.doe@example.com", required: true, enabled: true },
@@ -145,7 +151,10 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
           memberEmailLabel: "Email",
           memberEmailPlaceholder: "member@example.com",
           memberPhoneLabel: "Phone Number",
-          memberPhonePlaceholder: "+1 (555) 123-4567"
+          memberPhonePlaceholder: "+1 (555) 123-4567",
+          memberNameConfig: { enabled: true, required: true, label: "Full Name", placeholder: "Enter member name" },
+          memberEmailConfig: { enabled: true, required: true, label: "Email", placeholder: "member@example.com" },
+          memberPhoneConfig: { enabled: true, required: true, label: "Phone Number", placeholder: "+1 (555) 123-4567" },
         },
       },
       successTitle: existingForm.successTitle || undefined,
@@ -296,6 +305,54 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
     form.setValue("customFields", newFields);
   };
 
+  const addTeamMemberField = (fieldType: 'text' | 'email' | 'phone' | 'textarea' | 'url' | 'photo' = 'text') => {
+    const fields = form.getValues("teamMemberFields") || [];
+    const newField: CustomField = {
+      id: `member_field_${Date.now()}`,
+      type: fieldType,
+      label: "",
+      required: false,
+      placeholder: "",
+    };
+    form.setValue("teamMemberFields", [...fields, newField]);
+  };
+
+  const removeTeamMemberField = (index: number) => {
+    const fields = form.getValues("teamMemberFields") || [];
+    form.setValue("teamMemberFields", fields.filter((_, i) => i !== index));
+  };
+
+  const duplicateTeamMemberField = (index: number) => {
+    const fields = form.getValues("teamMemberFields") || [];
+    const fieldToDuplicate = fields[index];
+    const duplicatedField: CustomField = {
+      ...fieldToDuplicate,
+      id: `member_field_${Date.now()}`,
+      label: `${fieldToDuplicate.label} (Copy)`,
+    };
+    form.setValue("teamMemberFields", [...fields.slice(0, index + 1), duplicatedField, ...fields.slice(index + 1)]);
+    toast({
+      title: "Field Duplicated",
+      description: "Team member field has been duplicated successfully",
+    });
+  };
+
+  const moveTeamMemberFieldUp = (index: number) => {
+    if (index === 0) return;
+    const fields = form.getValues("teamMemberFields") || [];
+    const newFields = [...fields];
+    [newFields[index - 1], newFields[index]] = [newFields[index], newFields[index - 1]];
+    form.setValue("teamMemberFields", newFields);
+  };
+
+  const moveTeamMemberFieldDown = (index: number) => {
+    const fields = form.getValues("teamMemberFields") || [];
+    if (index === fields.length - 1) return;
+    const newFields = [...fields];
+    [newFields[index], newFields[index + 1]] = [newFields[index + 1], newFields[index]];
+    form.setValue("teamMemberFields", newFields);
+  };
+
   const handleSubmit = (data: FormBuilderData) => {
     // Validate payment fields have payment URLs
     const paymentFields = data.customFields?.filter(f => f.type === 'payment') || [];
@@ -320,6 +377,14 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
         required: field.required,
         helpText: field.helpText || "",
         ...(field.type === "payment" && { paymentUrl: field.paymentUrl || "" }),
+      })),
+      teamMemberFields: data.teamMemberFields?.map(field => ({
+        id: field.id,
+        type: field.type,
+        label: field.label,
+        placeholder: field.placeholder || "",
+        required: field.required,
+        helpText: field.helpText || "",
       })),
     };
 
@@ -787,6 +852,134 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                     </FormItem>
                   )}
                 />
+
+                <div className="border-t pt-4 mt-4">
+                  <h5 className="font-medium text-sm mb-3">Individual Member Field Settings</h5>
+                  <p className="text-xs text-gray-500 mb-3">Control which fields appear for each team member</p>
+                  
+                  {/* Member Name Field Configuration */}
+                  <div className="p-3 border rounded-md space-y-2 mb-3">
+                    <div className="flex items-center justify-between">
+                      <h6 className="text-sm font-medium">Member Name Field</h6>
+                      <div className="flex gap-4">
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberNameConfig.enabled"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Show</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberName-enabled"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberNameConfig.required"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Required</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberName-required"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Member Email Field Configuration */}
+                  <div className="p-3 border rounded-md space-y-2 mb-3">
+                    <div className="flex items-center justify-between">
+                      <h6 className="text-sm font-medium">Member Email Field</h6>
+                      <div className="flex gap-4">
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberEmailConfig.enabled"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Show</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberEmail-enabled"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberEmailConfig.required"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Required</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberEmail-required"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+
+                  {/* Member Phone Field Configuration */}
+                  <div className="p-3 border rounded-md space-y-2">
+                    <div className="flex items-center justify-between">
+                      <h6 className="text-sm font-medium">Member Phone Field</h6>
+                      <div className="flex gap-4">
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberPhoneConfig.enabled"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Show</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberPhone-enabled"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                        <FormField
+                          control={form.control}
+                          name="baseFields.teamMembers.memberPhoneConfig.required"
+                          render={({ field }) => (
+                            <FormItem className="flex items-center gap-2 space-y-0">
+                              <FormLabel className="text-xs">Required</FormLabel>
+                              <FormControl>
+                                <Checkbox
+                                  checked={field.value ?? true}
+                                  onCheckedChange={field.onChange}
+                                  data-testid="checkbox-memberPhone-required"
+                                />
+                              </FormControl>
+                            </FormItem>
+                          )}
+                        />
+                      </div>
+                    </div>
+                  </div>
+                </div>
 
                 <FormField
                   control={form.control}
@@ -1257,6 +1450,188 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
                 <Plus className="h-4 w-4 mr-2" />
                 Add Custom Field
               </Button>
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
+              <CardTitle>Team Member Custom Fields</CardTitle>
+              <CardDescription>Add custom fields that will appear for each team member (in addition to basic name/email/phone fields)</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              {(form.watch("teamMemberFields") || []).map((memberField, index) => (
+                <div key={memberField.id} className="p-4 border rounded-md space-y-3">
+                  <div className="grid grid-cols-2 gap-3">
+                    <FormField
+                      control={form.control}
+                      name={`teamMemberFields.${index}.type`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Type</FormLabel>
+                          <Select onValueChange={field.onChange} defaultValue={field.value}>
+                            <FormControl>
+                              <SelectTrigger data-testid={`select-member-field-type-${index}`}>
+                                <SelectValue placeholder="Select type" />
+                              </SelectTrigger>
+                            </FormControl>
+                            <SelectContent>
+                              <SelectItem value="text">Text</SelectItem>
+                              <SelectItem value="email">Email</SelectItem>
+                              <SelectItem value="phone">Phone</SelectItem>
+                              <SelectItem value="textarea">Long Text</SelectItem>
+                              <SelectItem value="url">URL</SelectItem>
+                              <SelectItem value="photo">Photo Upload</SelectItem>
+                            </SelectContent>
+                          </Select>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                    <FormField
+                      control={form.control}
+                      name={`teamMemberFields.${index}.label`}
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel className="text-sm">Label</FormLabel>
+                          <FormControl>
+                            <Input placeholder="Field label" {...field} data-testid={`input-member-field-label-${index}`} />
+                          </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <FormField
+                    control={form.control}
+                    name={`teamMemberFields.${index}.placeholder`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-sm">Placeholder</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Placeholder text" {...field} value={field.value || ""} data-testid={`input-member-field-placeholder-${index}`} />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <FormField
+                    control={form.control}
+                    name={`teamMemberFields.${index}.helpText`}
+                    render={({ field }) => (
+                      <FormItem className="flex-1">
+                        <FormLabel className="text-sm">Help Text / Instructions</FormLabel>
+                        <FormControl>
+                          <Textarea 
+                            placeholder="Add helpful instructions for users..." 
+                            {...field} 
+                            value={field.value || ""} 
+                            rows={2}
+                            data-testid={`textarea-member-field-help-${index}`} 
+                          />
+                        </FormControl>
+                        <FormDescription>This note will be shown below the field to guide users</FormDescription>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+
+                  <div className="flex gap-3 items-end">
+                    <FormField
+                      control={form.control}
+                      name={`teamMemberFields.${index}.required`}
+                      render={({ field }) => (
+                        <FormItem className="flex items-center gap-2 space-y-0 pb-2">
+                          <FormControl>
+                            <Checkbox
+                              checked={field.value}
+                              onCheckedChange={field.onChange}
+                              data-testid={`checkbox-member-field-required-${index}`}
+                            />
+                          </FormControl>
+                          <FormLabel className="text-sm">Required</FormLabel>
+                        </FormItem>
+                      )}
+                    />
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveTeamMemberFieldUp(index)}
+                      disabled={index === 0}
+                      data-testid={`button-move-up-member-field-${index}`}
+                    >
+                      <ArrowUp className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => moveTeamMemberFieldDown(index)}
+                      disabled={index === (form.getValues("teamMemberFields") || []).length - 1}
+                      data-testid={`button-move-down-member-field-${index}`}
+                    >
+                      <ArrowDown className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="outline"
+                      size="icon"
+                      onClick={() => duplicateTeamMemberField(index)}
+                      data-testid={`button-duplicate-member-field-${index}`}
+                    >
+                      <Copy className="h-4 w-4" />
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="destructive"
+                      size="icon"
+                      onClick={() => removeTeamMemberField(index)}
+                      data-testid={`button-remove-member-field-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4" />
+                    </Button>
+                  </div>
+                </div>
+              ))}
+              <div className="flex gap-2 flex-wrap">
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addTeamMemberField('text')}
+                  data-testid="button-add-team-member-text-field"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Text Field
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addTeamMemberField('photo')}
+                  data-testid="button-add-team-member-photo-field"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Photo Upload
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addTeamMemberField('email')}
+                  data-testid="button-add-team-member-email-field"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Email Field
+                </Button>
+                <Button
+                  type="button"
+                  variant="outline"
+                  onClick={() => addTeamMemberField('phone')}
+                  data-testid="button-add-team-member-phone-field"
+                >
+                  <Plus className="h-4 w-4 mr-2" />
+                  Add Phone Field
+                </Button>
+              </div>
             </CardContent>
           </Card>
 
