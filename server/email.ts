@@ -1,32 +1,30 @@
 
-import nodemailer from "nodemailer";
+import formData from "form-data";
+import Mailgun from "mailgun.js";
 import type { Registration } from "@shared/schema";
 
-const EMAIL_USER = process.env.EMAIL_USER || "";
-const EMAIL_PASS = process.env.EMAIL_PASS || "";
+const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || "";
+const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || "noreply@event.com";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
-// Create reusable transporter
-const transporter = nodemailer.createTransport({
-  service: "gmail",
-  host: "smtp.gmail.com",
-  port: 587,
-  secure: false, // true for 465, false for other ports
-  auth: {
-    user: EMAIL_USER,
-    pass: EMAIL_PASS,
-  },
-  tls: {
-    rejectUnauthorized: false
-  }
-});
+// Initialize Mailgun client
+const mailgun = new Mailgun(formData);
+let mg: ReturnType<typeof mailgun.client> | null = null;
+
+// Initialize client if credentials are available
+if (MAILGUN_API_KEY && MAILGUN_DOMAIN) {
+  mg = mailgun.client({
+    username: 'api',
+    key: MAILGUN_API_KEY,
+  });
+}
 
 // Log configuration on startup
 console.log("📧 Email Service Configuration:");
-console.log("- Service: Gmail");
-console.log("- User:", EMAIL_USER || "NOT CONFIGURED");
-console.log("- Password:", EMAIL_PASS ? "✅ SET (" + EMAIL_PASS.length + " chars)" : "❌ NOT SET");
+console.log("- Service: Mailgun");
+console.log("- API Key:", MAILGUN_API_KEY ? "✅ SET (" + MAILGUN_API_KEY.length + " chars)" : "❌ NOT SET");
+console.log("- Domain:", MAILGUN_DOMAIN || "NOT CONFIGURED");
 console.log("- From:", EMAIL_FROM);
 
 export async function sendQRCodeEmail(
@@ -34,18 +32,18 @@ export async function sendQRCodeEmail(
   qrCodeDataUrl: string,
   verificationUrl: string
 ): Promise<boolean> {
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    console.error("❌ Email credentials not configured. Skipping email send.");
-    console.error("EMAIL_USER:", EMAIL_USER);
-    console.error("EMAIL_PASS:", EMAIL_PASS ? "SET" : "NOT SET");
+  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN || !mg) {
+    console.error("❌ Mailgun credentials not configured. Skipping email send.");
+    console.error("MAILGUN_API_KEY:", MAILGUN_API_KEY ? "SET" : "NOT SET");
+    console.error("MAILGUN_DOMAIN:", MAILGUN_DOMAIN || "NOT SET");
     return false;
   }
 
   console.log("📧 Attempting to send email to:", registration.email);
   console.log("Using email config:", {
-    user: EMAIL_USER,
+    domain: MAILGUN_DOMAIN,
     from: EMAIL_FROM,
-    service: "gmail"
+    service: "Mailgun"
   });
 
   try {
@@ -53,7 +51,7 @@ export async function sendQRCodeEmail(
     const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
     const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    const mailOptions = {
+    const messageData = {
       from: EMAIL_FROM,
       to: registration.email,
       subject: `Your Event QR Code - ${registration.id}`,
@@ -171,25 +169,24 @@ export async function sendQRCodeEmail(
         </body>
         </html>
       `,
-      attachments: [
+      inline: imageBuffer,
+      attachment: [
         {
           filename: `QR-Code-${registration.id}.png`,
-          content: imageBuffer,
-          cid: 'qrcode', // Referenced in HTML as <img src="cid:qrcode">
-          contentType: 'image/png'
+          data: imageBuffer,
         }
       ]
     };
 
-    const info = await transporter.sendMail(mailOptions);
+    const result = await mg.messages.create(MAILGUN_DOMAIN, messageData);
     console.log(`✅ QR code email sent successfully to ${registration.email}`);
-    console.log("Message ID:", info.messageId);
-    console.log("Response:", info.response);
+    console.log("Message ID:", result.id);
+    console.log("Status:", result.status);
     return true;
   } catch (error: any) {
     console.error("❌ Error sending QR code email:");
     console.error("Error message:", error.message);
-    console.error("Error code:", error.code);
+    console.error("Error details:", error.details || "No additional details");
     console.error("Full error:", error);
     return false;
   }
@@ -197,17 +194,19 @@ export async function sendQRCodeEmail(
 
 // Test email configuration
 export async function testEmailConnection(): Promise<boolean> {
-  if (!EMAIL_USER || !EMAIL_PASS) {
-    console.error("❌ Email credentials not configured");
+  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN || !mg) {
+    console.error("❌ Mailgun credentials not configured");
     return false;
   }
 
   try {
-    await transporter.verify();
-    console.log("✅ Email server connection verified successfully");
+    // Validate domain by getting domain info
+    const domain = await mg.domains.get(MAILGUN_DOMAIN);
+    console.log("✅ Mailgun connection verified successfully");
+    console.log("Domain state:", domain.state);
     return true;
   } catch (error: any) {
-    console.error("❌ Email server connection failed:");
+    console.error("❌ Mailgun connection failed:");
     console.error("Error:", error.message);
     return false;
   }
@@ -215,5 +214,5 @@ export async function testEmailConnection(): Promise<boolean> {
 
 // Verify email configuration
 export function isEmailConfigured(): boolean {
-  return !!(EMAIL_USER && EMAIL_PASS);
+  return !!(MAILGUN_API_KEY && MAILGUN_DOMAIN);
 }

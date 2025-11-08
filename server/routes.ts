@@ -293,6 +293,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
     }
   });
 
+  // GET /api/admin/scan-history - Get all scan history
+  app.get("/api/admin/scan-history", requireAdmin, async (req, res) => {
+    try {
+      const limit = req.query.limit ? parseInt(req.query.limit as string) : 100;
+      const history = await storage.getScanHistory(limit);
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch scan history" });
+    }
+  });
+
+  // GET /api/admin/scan-history/:ticketId - Get scan history for a specific ticket
+  app.get("/api/admin/scan-history/:ticketId", requireAdmin, async (req, res) => {
+    try {
+      const { ticketId } = req.params;
+      const history = await storage.getScanHistoryByTicketId(ticketId);
+      res.json(history);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message || "Failed to fetch ticket scan history" });
+    }
+  });
+
   // DELETE /api/admin/registrations/:id - Delete a registration
   app.delete("/api/admin/registrations/:id", requireAdmin, async (req, res) => {
     try {

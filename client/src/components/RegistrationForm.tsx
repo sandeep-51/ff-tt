@@ -113,7 +113,7 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
       teamMemberFieldsSchema[field.id] = field.required ? fieldSchema : z.string().optional().or(z.literal(""));
     });
 
-    baseSchema.teamMembers = z.array(z.object(teamMemberFieldsSchema)).min(1, "At least one team member is required");
+    baseSchema.teamMembers = z.array(z.object(teamMemberFieldsSchema)).optional();
   }
 
   const customFieldsSchema: Record<string, z.ZodTypeAny> = {};
@@ -220,7 +220,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     teamMemberDefaults[field.id] = "";
   });
 
-  defaultValues.teamMembers = [teamMemberDefaults];
+  if (baseFields.teamMembers?.enabled) {
+    defaultValues.teamMembers = [];
+  }
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -232,7 +234,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   });
 
   const maxTeamMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
-  const [selectedMemberCount, setSelectedMemberCount] = useState(1);
+  const [selectedMemberCount, setSelectedMemberCount] = useState(0);
 
   const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
     control: form.control,
@@ -245,7 +247,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
     const currentCount = teamMemberFields.length;
 
-    if (newCount > currentCount) {
+    if (newCount === 0) {
+      // Remove all team members
+      for (let i = currentCount - 1; i >= 0; i--) {
+        removeTeamMember(i);
+      }
+    } else if (newCount > currentCount) {
       for (let i = currentCount; i < newCount; i++) {
         appendTeamMember({ name: "", email: "", phone: "" });
       }
@@ -305,9 +312,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
       if (baseFields.organization?.enabled && data.organization) payload.organization = data.organization;
       if (baseFields.groupSize?.enabled && data.groupSize) payload.groupSize = parseInt(data.groupSize);
 
-      // Add team members
-      if (data.teamMembers && data.teamMembers.length > 0) {
+      // Add team members (can be empty array if 0 selected)
+      if (data.teamMembers) {
         payload.teamMembers = data.teamMembers.filter((m: any) => m.name || m.email || m.phone);
+      } else {
+        payload.teamMembers = [];
       }
 
       console.log("📤 Sending payload:", payload);
@@ -673,6 +682,30 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           />
                         )}
                       </div>
+
+                      {baseFields.organization?.enabled && (
+                        <FormField
+                          control={form.control}
+                          name="organization"
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-300">
+                                {baseFields.organization?.label}
+                                {baseFields.organization?.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder={baseFields.organization?.placeholder || "Enter organization name"}
+                                  {...field}
+                                  className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                  data-testid="input-organization"
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[#ff6b35]" />
+                            </FormItem>
+                          )}
+                        />
+                      )}
                     </div>
 
                     {/* Team Members Section */}
@@ -686,22 +719,33 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                         </div>
 
                         <div className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
-                          <Label className="text-gray-300 mb-2 block">How many team members?</Label>
+                          <Label className="text-gray-300 mb-2 block font-semibold">Select Your Squad Type</Label>
                           <Select value={selectedMemberCount.toString()} onValueChange={handleMemberCountChange}>
-                            <SelectTrigger className="bg-[#232835] border-[#2d3548] text-white">
-                              <SelectValue placeholder="Select number of members" />
+                            <SelectTrigger className="bg-[#232835] border-[#2d3548] text-white hover:border-[#ff6b35]">
+                              <SelectValue placeholder="Select squad type" />
                             </SelectTrigger>
-                            <SelectContent>
+                            <SelectContent className="bg-[#232835] border-[#2d3548]">
+                              <SelectItem value="0" className="text-white hover:bg-[#1a1d29]">
+                                🎯 Solo (No Team Members)
+                              </SelectItem>
                               {Array.from({ length: maxTeamMembers }, (_, i) => i + 1).map((num) => (
-                                <SelectItem key={num} value={num.toString()}>
-                                  {num} {num === 1 ? 'Member' : 'Members'}
+                                <SelectItem key={num} value={num.toString()} className="text-white hover:bg-[#1a1d29]">
+                                  {num === 1 ? '👥 Duo (1 Team Member)' : 
+                                   num === 2 ? '👥👥 Trio (2 Team Members)' : 
+                                   num === 3 ? '👥👥👥 Squad (3 Team Members)' : 
+                                   `👥 ${num} Team Members`}
                                 </SelectItem>
                               ))}
                             </SelectContent>
                           </Select>
+                          {selectedMemberCount === 0 && (
+                            <p className="text-sm text-[#ff6b35] mt-2 font-medium">
+                              ✓ Playing solo - no team member forms needed
+                            </p>
+                          )}
                         </div>
 
-                        {teamMemberFields.map((field, index) => {
+                        {selectedMemberCount > 0 && teamMemberFields.map((field, index) => {
                           const memberNameConfig = teamMembersConfig.memberNameConfig;
                           const memberEmailConfig = teamMembersConfig.memberEmailConfig;
                           const memberPhoneConfig = teamMembersConfig.memberPhoneConfig;

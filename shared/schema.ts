@@ -85,7 +85,7 @@ export const baseFieldConfigSchema = z.object({
   placeholder: z.string().optional(),
   required: z.boolean().default(true),
   enabled: z.boolean().default(true),
-  maxTeamMembers: z.number().min(1).max(20).optional(),
+  maxTeamMembers: z.number().min(0).max(20).optional(),
   helpText: z.string().optional(),
   memberNameLabel: z.string().optional(),
   memberNamePlaceholder: z.string().optional(),

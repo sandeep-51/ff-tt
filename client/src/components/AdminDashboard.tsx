@@ -6,6 +6,11 @@ import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import FormsList from "./FormsList";
 import FormDetails from "./FormDetails";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import QRScanner from "./QRScanner";
+import QRGenerator from "./QRGenerator";
+import ExportData from "./ExportData";
+import ScanHistory from "./ScanHistory";
 
 interface AdminDashboardProps {
   onLogout: () => void;
@@ -14,6 +19,7 @@ interface AdminDashboardProps {
 export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
   const { toast } = useToast();
   const [selectedFormId, setSelectedFormId] = useState<number | null>(null);
+  const [activeTab, setActiveTab] = useState("overview");
 
   // Logout mutation
   const logoutMutation = useMutation({
@@ -57,14 +63,50 @@ export default function AdminDashboard({ onLogout }: AdminDashboardProps) {
       </header>
 
       <main className="max-w-7xl mx-auto px-6 py-8">
-        {selectedFormId === null ? (
-          <FormsList onFormClick={(formId) => setSelectedFormId(formId)} />
-        ) : (
-          <FormDetails
-            formId={selectedFormId}
-            onBack={() => setSelectedFormId(null)}
-          />
-        )}
+        <div className="space-y-6">
+          <Tabs defaultValue="overview" value={activeTab} onValueChange={(value) => setActiveTab(value)}>
+            <TabsList className="grid w-full grid-cols-6">
+              <TabsTrigger value="overview">Overview</TabsTrigger>
+              <TabsTrigger value="forms">Forms</TabsTrigger>
+              <TabsTrigger value="scanner">Scanner</TabsTrigger>
+              <TabsTrigger value="generator">Generator</TabsTrigger>
+              <TabsTrigger value="history">History</TabsTrigger>
+              <TabsTrigger value="export">Export</TabsTrigger>
+            </TabsList>
+
+            <TabsContent value="overview" className="space-y-6">
+              {/* Overview content will go here */}
+              <p>Overview Dashboard</p>
+            </TabsContent>
+
+            <TabsContent value="forms" className="space-y-6">
+              {selectedFormId === null ? (
+                <FormsList onFormClick={(formId) => setSelectedFormId(formId)} />
+              ) : (
+                <FormDetails
+                  formId={selectedFormId}
+                  onBack={() => setSelectedFormId(null)}
+                />
+              )}
+            </TabsContent>
+
+            <TabsContent value="scanner" className="space-y-6">
+              <QRScanner />
+            </TabsContent>
+
+            <TabsContent value="generator" className="space-y-6">
+              <QRGenerator />
+            </TabsContent>
+
+            <TabsContent value="history" className="space-y-6">
+              <ScanHistory />
+            </TabsContent>
+
+            <TabsContent value="export" className="space-y-6">
+              <ExportData />
+            </TabsContent>
+          </Tabs>
+        </div>
       </main>
     </div>
   );

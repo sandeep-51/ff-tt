@@ -1,6 +1,13 @@
 import type { Registration, InsertRegistration } from "@shared/schema";
 import { ticketDb } from "./mongodb";
 
+export interface ScanHistory {
+  id: string;
+  ticketId: string;
+  timestamp: Date;
+  // Add any other relevant fields for scan history
+}
+
 export interface IStorage {
   createRegistration(data: InsertRegistration): Promise<Registration>;
   getRegistration(id: string): Promise<Registration | undefined>;
@@ -22,12 +29,11 @@ export interface IStorage {
   publishEventForm(id: number): Promise<boolean>;
   unpublishEventForm(id: number): Promise<boolean>;
   deleteEventForm(id: number): Promise<boolean>;
-  deleteRegistration(id: string): Promise<boolean>;
-  revokeQRCode(id: string): Promise<boolean>;
-  updateRegistration(id: string, data: Partial<InsertRegistration>): Promise<boolean>;
-  getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Promise<Registration[]>;
-  getRegistrationsByFormIdCount(formId: number): Promise<number>;
-  getFormStats(formId: number): Promise<any>;
+  getScanHistory(limit?: number): Promise<ScanHistory[]>;
+  getScanHistoryByTicketId(ticketId: string): Promise<ScanHistory[]>;
+  exportToCSV(registrations: Registration[]): string;
+  exportToPDF(registrations: Registration[]): Promise<Buffer>;
+  exportToExcel(registrations: Registration[]): Buffer;
 }
 
 export class SqliteStorage implements IStorage {
@@ -64,7 +70,34 @@ export class SqliteStorage implements IStorage {
   }
 
   async verifyAndScan(ticketId: string): Promise<{ valid: boolean; registration?: Registration; message: string }> {
-    return ticketDb.verifyAndScan(ticketId);
+    const registration = await ticketDb.getRegistration(ticketId);
+
+    if (!registration) {
+      return { valid: false, message: "Ticket not found." };
+    }
+
+    if (registration.scans >= registration.maxScans) {
+      return { valid: false, message: "This ticket has reached its maximum scan limit." };
+    }
+
+    // Update scan count and status
+    const newScans = registration.scans + 1;
+    // Once checked-in, keep status as checked-in permanently
+    const newStatus = registration.status === "checked-in" ? "checked-in" : "checked-in";
+
+    // Save scan history
+    await ticketDb.createScanHistory({ ticketId, timestamp: new Date(), /* other fields */ });
+
+    await ticketDb.updateRegistration(ticketId, {
+      scans: newScans,
+      status: newStatus
+    });
+
+    return {
+      valid: true,
+      registration: { ...registration, scans: newScans, status: newStatus },
+      message: "Ticket verified and scanned successfully."
+    };
   }
 
   async getStats() {
@@ -115,6 +148,14 @@ export class SqliteStorage implements IStorage {
     return ticketDb.deleteEventForm(id);
   }
 
+  async getScanHistory(limit?: number): Promise<ScanHistory[]> {
+    return ticketDb.getScanHistory(limit);
+  }
+
+  async getScanHistoryByTicketId(ticketId: string): Promise<ScanHistory[]> {
+    return ticketDb.getScanHistoryByTicketId(ticketId);
+  }
+
   exportToCSV(registrations: Registration[]): string {
     const allCustomFieldKeys = new Set<string>();
     registrations.forEach(r => {
@@ -160,7 +201,7 @@ export class SqliteStorage implements IStorage {
   }
 
   async exportToPDF(registrations: Registration[]): Promise<Buffer> {
-    const PDFDocument = require('pdfkit');
+    const PDFDocument = (await import('pdfkit')).default;
     const doc = new PDFDocument({ margin: 50 });
     const chunks: Buffer[] = [];
 
@@ -208,8 +249,8 @@ export class SqliteStorage implements IStorage {
 
         if (reg.customFieldData && Object.keys(reg.customFieldData).length > 0) {
           Object.entries(reg.customFieldData).forEach(([key, value]) => {
-            const displayValue = String(value).startsWith('/attached_assets/') 
-              ? `[Photo: ${value}]` 
+            const displayValue = String(value).startsWith('/attached_assets/')
+              ? `[Photo: ${value}]`
               : value;
             doc.text(`   ${key}: ${displayValue}`);
           });
@@ -221,7 +262,7 @@ export class SqliteStorage implements IStorage {
   }
 
   exportToExcel(registrations: Registration[]): Buffer {
-    const XLSX = require('xlsx');
+    const XLSX = require('xlsx') as typeof import('xlsx');
 
     const rows = registrations.map((r) => {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0

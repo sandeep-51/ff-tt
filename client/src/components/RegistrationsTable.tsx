@@ -109,18 +109,18 @@ export default function RegistrationsTable({
 
   const getStatusBadge = (status: Registration["status"], scans: number, maxScans: number) => {
     const statusConfig = {
-      pending: { label: "Pending QR", variant: "secondary" as const, icon: Clock },
-      active: { label: `Active (${scans}/${maxScans})`, variant: "default" as const, icon: CheckCircle2 },
-      "checked-in": { label: "Checked In", variant: "default" as const, icon: CheckCircle2 },
-      exhausted: { label: `Exhausted (${maxScans}/${maxScans})`, variant: "destructive" as const, icon: XCircle },
-      invalid: { label: "Invalid", variant: "destructive" as const, icon: XCircle },
+      pending: { label: "Pending QR", variant: "secondary" as const, icon: Clock, className: "" },
+      active: { label: `Active (${scans}/${maxScans})`, variant: "default" as const, icon: CheckCircle2, className: "" },
+      "checked-in": { label: `Checked In (${scans}/${maxScans})`, variant: "default" as const, icon: CheckCircle2, className: "bg-blue-600 hover:bg-blue-700 text-white" },
+      exhausted: { label: `Exhausted (${maxScans}/${maxScans})`, variant: "destructive" as const, icon: XCircle, className: "" },
+      invalid: { label: "Invalid", variant: "destructive" as const, icon: XCircle, className: "" },
     };
 
     const config = statusConfig[status];
     const Icon = config.icon;
 
     return (
-      <Badge variant={config.variant} className="gap-1" data-testid={`badge-status-${status}`}>
+      <Badge variant={config.variant} className={`gap-1 ${config.className}`} data-testid={`badge-status-${status}`}>
         <Icon className="h-3 w-3" />
         {config.label}
       </Badge>

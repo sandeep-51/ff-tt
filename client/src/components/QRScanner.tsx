@@ -262,6 +262,9 @@ export default function QRScanner({ onScan }: QRScannerProps) {
                             <Users className="h-3 w-3 mr-1" />
                             Group of {lastResult.groupSize}
                           </Badge>
+                          {lastResult.valid && lastResult.scansUsed === 1 && (
+                            <Badge className="bg-blue-600 hover:bg-blue-700">First Entry - Checked In</Badge>
+                          )}
                           {lastResult.valid && lastResult.scansUsed === lastResult.maxScans && (
                             <Badge variant="secondary">Last Entry</Badge>
                           )}

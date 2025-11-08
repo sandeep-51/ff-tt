@@ -159,21 +159,13 @@ export class TicketDatabase {
       return { valid: false, registration: registration as unknown as Registration, message: "QR code not generated yet" };
     }
 
-    if (registration.status === "exhausted") {
-      return { valid: false, registration: registration as unknown as Registration, message: "Ticket exhausted - max scans reached" };
-    }
-
     if (registration.scans >= registration.maxScans) {
-      await database.collection("registrations").updateOne(
-        { id: ticketId },
-        { $set: { status: "exhausted" } }
-      );
-      registration.status = "exhausted";
       return { valid: false, registration: registration as unknown as Registration, message: "Maximum scans reached" };
     }
 
     const newScans = registration.scans + 1;
-    const newStatus = newScans >= registration.maxScans ? "exhausted" : "checked-in";
+    // Once checked-in, always keep status as checked-in
+    const newStatus = registration.status === "checked-in" ? "checked-in" : "checked-in";
 
     await database.collection("registrations").updateOne(
       { id: ticketId },
@@ -328,6 +320,30 @@ export class TicketDatabase {
     return result.deletedCount > 0;
   }
 
+  async getScanHistory(limit?: number): Promise<ScanHistory[]> {
+    const database = await this.getDb();
+    const query = database.collection("scan_history")
+      .find({})
+      .sort({ scannedAt: -1 });
+    
+    if (limit) {
+      query.limit(limit);
+    }
+
+    const history = await query.toArray();
+    return history as unknown as ScanHistory[];
+  }
+
+  async getScanHistoryByTicketId(ticketId: string): Promise<ScanHistory[]> {
+    const database = await this.getDb();
+    const history = await database.collection("scan_history")
+      .find({ ticketId })
+      .sort({ scannedAt: -1 })
+      .toArray();
+    
+    return history as unknown as ScanHistory[];
+  }
+
   exportToCSV(registrations: Registration[]): string {
     const allCustomFieldKeys = new Set<string>();
     registrations.forEach(r => {
@@ -373,7 +389,7 @@ export class TicketDatabase {
   }
 
   async exportToPDF(registrations: Registration[]): Promise<Buffer> {
-    const PDFDocument = require('pdfkit');
+    const PDFDocument = (await import('pdfkit')).default;
     const doc = new PDFDocument({ margin: 50 });
     const chunks: Buffer[] = [];
 
@@ -434,7 +450,7 @@ export class TicketDatabase {
   }
 
   exportToExcel(registrations: Registration[]): Buffer {
-    const XLSX = require('xlsx');
+    const XLSX = require('xlsx') as typeof import('xlsx');
 
     const rows = registrations.map((r) => {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
