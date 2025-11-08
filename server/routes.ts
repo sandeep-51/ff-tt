@@ -83,18 +83,23 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/register - Create new registration
   app.post("/api/register", express.json(), async (req, res) => {
     try {
+      console.log("📝 Received registration request:", req.body);
       const validated = insertRegistrationSchema.parse(req.body);
+      console.log("✅ Validation passed:", validated);
       
       // Get the published form to associate with this registration
       const publishedForm = await storage.getPublishedForm();
       const formId = publishedForm?.id || null;
+      console.log("📋 Form ID:", formId);
       
       const registration = await storage.createRegistration({
         ...validated,
         formId,
       });
+      console.log("✅ Registration created:", registration);
       res.json(registration);
     } catch (error: any) {
+      console.error("❌ Registration error:", error);
       res.status(400).json({ error: error.message || "Invalid registration data" });
     }
   });

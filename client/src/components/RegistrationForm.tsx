@@ -31,23 +31,23 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
 
   // Build base fields schema from configuration
   if (baseFields?.name?.enabled) {
-    const nameSchema = z.string().min(2, "Name must be at least 2 characters");
-    baseSchema.name = baseFields.name.required ? nameSchema : nameSchema.optional().or(z.literal(""));
+    const nameSchema = z.string().min(1, "Name is required").min(2, "Name must be at least 2 characters");
+    baseSchema.name = baseFields.name.required ? nameSchema : z.string().optional().or(z.literal(""));
   }
 
   if (baseFields?.email?.enabled) {
-    const emailSchema = z.string().email("Invalid email address");
-    baseSchema.email = baseFields.email.required ? emailSchema : emailSchema.optional().or(z.literal(""));
+    const emailSchema = z.string().min(1, "Email is required").email("Invalid email address");
+    baseSchema.email = baseFields.email.required ? emailSchema : z.string().optional().or(z.literal(""));
   }
 
   if (baseFields?.phone?.enabled) {
-    const phoneSchema = z.string().min(10, "Phone number must be at least 10 digits");
-    baseSchema.phone = baseFields.phone.required ? phoneSchema : phoneSchema.optional().or(z.literal(""));
+    const phoneSchema = z.string().min(1, "Phone is required").min(10, "Phone number must be at least 10 digits");
+    baseSchema.phone = baseFields.phone.required ? phoneSchema : z.string().optional().or(z.literal(""));
   }
 
   if (baseFields?.organization?.enabled) {
-    const orgSchema = z.string().min(2, "Organization must be at least 2 characters");
-    baseSchema.organization = baseFields.organization.required ? orgSchema : orgSchema.optional().or(z.literal(""));
+    const orgSchema = z.string().min(1, "Organization is required").min(2, "Organization must be at least 2 characters");
+    baseSchema.organization = baseFields.organization.required ? orgSchema : z.string().optional().or(z.literal(""));
   }
 
   if (baseFields?.groupSize?.enabled) {
@@ -65,21 +65,21 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
     const memberNameConfig = baseFields.teamMembers.memberNameConfig;
     if (memberNameConfig?.enabled !== false) {
       const nameSchema = z.string().min(1, "Member name is required");
-      teamMemberFieldsSchema.name = memberNameConfig?.required !== false ? nameSchema : nameSchema.optional().or(z.literal(""));
+      teamMemberFieldsSchema.name = memberNameConfig?.required !== false ? nameSchema : z.string().optional().or(z.literal(""));
     }
     
     // Member Email Field
     const memberEmailConfig = baseFields.teamMembers.memberEmailConfig;
     if (memberEmailConfig?.enabled !== false) {
-      const emailSchema = z.string().email("Invalid email").min(1, "Email is required");
-      teamMemberFieldsSchema.email = memberEmailConfig?.required !== false ? emailSchema : emailSchema.optional().or(z.literal(""));
+      const emailSchema = z.string().min(1, "Email is required").email("Invalid email");
+      teamMemberFieldsSchema.email = memberEmailConfig?.required !== false ? emailSchema : z.string().optional().or(z.literal(""));
     }
     
     // Member Phone Field
     const memberPhoneConfig = baseFields.teamMembers.memberPhoneConfig;
     if (memberPhoneConfig?.enabled !== false) {
-      const phoneSchema = z.string().min(10, "Phone number is required (minimum 10 digits)");
-      teamMemberFieldsSchema.phone = memberPhoneConfig?.required !== false ? phoneSchema : phoneSchema.optional().or(z.literal(""));
+      const phoneSchema = z.string().min(1, "Phone is required").min(10, "Phone number is required (minimum 10 digits)");
+      teamMemberFieldsSchema.phone = memberPhoneConfig?.required !== false ? phoneSchema : z.string().optional().or(z.literal(""));
     }
     
     // Add custom team member fields
@@ -88,13 +88,13 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
       
       switch (field.type) {
         case "email":
-          fieldSchema = z.string().email("Invalid email address");
+          fieldSchema = z.string().min(1, "Email is required").email("Invalid email address");
           break;
         case "phone":
-          fieldSchema = z.string().min(10, "Phone number must be at least 10 digits");
+          fieldSchema = z.string().min(1, "Phone is required").min(10, "Phone number must be at least 10 digits");
           break;
         case "url":
-          fieldSchema = z.string().url("Invalid URL");
+          fieldSchema = z.string().min(1, "URL is required").url("Invalid URL");
           break;
         case "photo":
           fieldSchema = z.string().min(1, "Photo is required");
@@ -103,7 +103,7 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
           fieldSchema = z.string().min(1, `${field.label} is required`);
       }
       
-      teamMemberFieldsSchema[field.id] = field.required ? fieldSchema : fieldSchema.optional().or(z.literal(""));
+      teamMemberFieldsSchema[field.id] = field.required ? fieldSchema : z.string().optional().or(z.literal(""));
     });
     
     baseSchema.teamMembers = z.array(z.object(teamMemberFieldsSchema)).min(1, "At least one team member is required");
@@ -280,6 +280,8 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
   const mutation = useMutation({
     mutationFn: async (data: any) => {
+      console.log("📝 Form data being submitted:", data);
+      
       const customFieldData: Record<string, string> = {};
       customFields.forEach((field) => {
         if (data[field.id]) {
@@ -298,13 +300,17 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
       // Add team members
       if (data.teamMembers && data.teamMembers.length > 0) {
-        payload.teamMembers = data.teamMembers.filter((m: any) => m.name);
+        payload.teamMembers = data.teamMembers.filter((m: any) => m.name || m.email || m.phone);
       }
 
+      console.log("📤 Sending payload:", payload);
       const response = await apiRequest("POST", "/api/register", payload);
-      return response.json();
+      const result = await response.json();
+      console.log("✅ Registration response:", result);
+      return result;
     },
     onSuccess: (data) => {
+      console.log("🎉 Registration successful!", data);
       setSubmittedData(data);
       toast({
         title: "Registration Successful",
@@ -312,6 +318,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
       });
     },
     onError: (error: any) => {
+      console.error("❌ Registration error:", error);
       toast({
         title: "Registration Failed",
         description: error.message || "An error occurred during registration.",
@@ -320,7 +327,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     },
   });
 
-  const handleSubmit = (data: any) => {
+  const onSubmit = (data: any) => {
+    console.log("🚀 Attempting to submit form...");
+    console.log("Form validation passed, data:", data);
     mutation.mutate(data);
   };
 
@@ -538,7 +547,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
                     {/* Squad Leader Section */}
                     <div className="space-y-4">
                       <h3 className="text-[#ff6b35] font-semibold text-lg">SQUAD LEADER (YOU)</h3>
