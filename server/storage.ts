@@ -1,4 +1,5 @@
-import type { Registration, InsertRegistration, EventForm, EventFormInput } from "@shared/schema";
+import type { Registration, InsertRegistration } from "@shared/schema";
+import { ticketDb } from "./mongodb";
 
 export interface IStorage {
   createRegistration(data: InsertRegistration): Promise<Registration>;
@@ -29,243 +30,89 @@ export interface IStorage {
   getFormStats(formId: number): Promise<any>;
 }
 
-class MemStorage implements IStorage {
-  private registrations: Map<string, Registration> = new Map();
-  private eventForms: Map<number, EventForm> = new Map();
-  private nextFormId: number = 1;
-  private scanHistory: Array<{ id: string; ticketId: string; scannedAt: string; valid: boolean }> = [];
-
-  private generateTicketId(): string {
-    return `REG${String(Math.floor(Math.random() * 9000) + 1000).padStart(4, "0")}`;
-  }
-
+export class SqliteStorage implements IStorage {
   async createRegistration(data: InsertRegistration): Promise<Registration> {
-    const id = this.generateTicketId();
-    const groupSize = data.groupSize || 1;
-    const maxScans = groupSize * 1;
-
-    const registration: Registration = {
-      id,
-      name: data.name || '',
-      email: data.email || '',
-      phone: data.phone || '',
-      organization: data.organization || '',
-      groupSize,
-      scans: 0,
-      maxScans,
-      hasQR: false,
-      qrCodeData: null,
-      status: 'pending',
-      createdAt: new Date().toISOString(),
-      formId: data.formId ?? null,
-      customFieldData: data.customFieldData || {},
-      teamMembers: data.teamMembers || [],
-    };
-
-    this.registrations.set(id, registration);
-    return registration;
+    return ticketDb.createRegistration(data);
   }
 
   async getRegistration(id: string): Promise<Registration | undefined> {
-    return this.registrations.get(id);
+    return ticketDb.getRegistration(id);
   }
 
   async getAllRegistrations(limit?: number, offset?: number): Promise<Registration[]> {
-    const allRegs = Array.from(this.registrations.values());
-    const start = offset || 0;
-    const end = limit ? start + limit : undefined;
-    return allRegs.slice(start, end);
+    return ticketDb.getAllRegistrations(limit, offset);
   }
 
   async getRegistrationsCount(): Promise<number> {
-    return this.registrations.size;
+    return ticketDb.getRegistrationsCount();
   }
 
   async getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Promise<Registration[]> {
-    const filtered = Array.from(this.registrations.values()).filter(
-      (r) => r.formId === formId
-    );
-    const start = offset || 0;
-    const end = limit ? start + limit : undefined;
-    return filtered.slice(start, end);
+    return ticketDb.getRegistrationsByFormId(formId, limit, offset);
   }
 
   async getRegistrationsByFormIdCount(formId: number): Promise<number> {
-    return Array.from(this.registrations.values()).filter(
-      (r) => r.formId === formId
-    ).length;
+    return ticketDb.getRegistrationsByFormIdCount(formId);
   }
 
   async getFormStats(formId: number) {
-    const regs = await this.getRegistrationsByFormId(formId);
-    return {
-      totalRegistrations: regs.length,
-      qrCodesGenerated: regs.filter((r) => r.hasQR).length,
-      totalEntries: regs.filter((r) => r.status === 'checked-in').length,
-      activeRegistrations: regs.filter((r) => r.status === 'active' || r.status === 'pending').length,
-    };
+    return ticketDb.getFormStats(formId);
   }
 
   async generateQRCode(id: string, qrCodeData: string): Promise<boolean> {
-    const reg = this.registrations.get(id);
-    if (!reg) return false;
-
-    reg.hasQR = true;
-    reg.qrCodeData = qrCodeData;
-    reg.status = 'active';
-    this.registrations.set(id, reg);
-    return true;
+    return ticketDb.generateQRCode(id, qrCodeData);
   }
 
   async verifyAndScan(ticketId: string): Promise<{ valid: boolean; registration?: Registration; message: string }> {
-    const registration = this.registrations.get(ticketId);
-
-    if (!registration) {
-      return { valid: false, message: "Invalid ticket - not found" };
-    }
-
-    if (!registration.hasQR) {
-      return { valid: false, registration, message: "QR code not generated yet" };
-    }
-
-    if (registration.status === "exhausted") {
-      return { valid: false, registration, message: "Ticket exhausted - max scans reached" };
-    }
-
-    if (registration.scans >= registration.maxScans) {
-      registration.status = "exhausted";
-      this.registrations.set(ticketId, registration);
-      return { valid: false, registration, message: "Maximum scans reached" };
-    }
-
-    registration.scans += 1;
-    registration.status = registration.scans >= registration.maxScans ? "exhausted" : "checked-in";
-    this.registrations.set(ticketId, registration);
-
-    this.scanHistory.push({
-      id: `SCAN${Date.now()}`,
-      ticketId,
-      scannedAt: new Date().toISOString(),
-      valid: true,
-    });
-
-    return {
-      valid: true,
-      registration,
-      message: `Valid! ${registration.scans}/${registration.maxScans} scans used`,
-    };
+    return ticketDb.verifyAndScan(ticketId);
   }
 
   async getStats() {
-    const allRegs = Array.from(this.registrations.values());
-    return {
-      totalRegistrations: allRegs.length,
-      qrCodesGenerated: allRegs.filter((r) => r.hasQR).length,
-      totalEntries: allRegs.filter((r) => r.status === 'checked-in' || r.status === 'exhausted').length,
-      activeRegistrations: allRegs.filter((r) => r.status === 'active' || r.status === 'pending').length,
-    };
+    return ticketDb.getStats();
   }
 
   async deleteRegistration(id: string): Promise<boolean> {
-    return this.registrations.delete(id);
+    return ticketDb.deleteRegistration(id);
   }
 
   async revokeQRCode(id: string): Promise<boolean> {
-    const reg = this.registrations.get(id);
-    if (!reg) return false;
-
-    reg.hasQR = false;
-    reg.qrCodeData = null;
-    reg.status = 'pending';
-    reg.scans = 0;
-    this.registrations.set(id, reg);
-    return true;
+    return ticketDb.revokeQRCode(id);
   }
 
   async updateRegistration(id: string, data: Partial<InsertRegistration>): Promise<boolean> {
-    const reg = this.registrations.get(id);
-    if (!reg) return false;
-
-    Object.assign(reg, data);
-    this.registrations.set(id, reg);
-    return true;
+    return ticketDb.updateRegistration(id, data);
   }
 
-  async createEventForm(data: any): Promise<any> {
-    const id = this.nextFormId++;
-    const form: EventForm = {
-      id,
-      title: data.title,
-      subtitle: data.subtitle || null,
-      heroImageUrl: data.heroImageUrl || null,
-      backgroundImageUrl: data.backgroundImageUrl || null,
-      watermarkUrl: data.watermarkUrl || null,
-      logoUrl: data.logoUrl || null,
-      customLinks: data.customLinks || [],
-      description: data.description || null,
-      customFields: data.customFields || [],
-      baseFields: data.baseFields || {},
-      successMessage: data.successMessage || null,
-      successTitle: data.successTitle || null,
-      isPublished: false,
-      createdAt: new Date().toISOString(),
-      updatedAt: new Date().toISOString(),
-    };
-
-    this.eventForms.set(id, form);
-    return form;
+  async createEventForm(data: any) {
+    return ticketDb.createEventForm(data);
   }
 
-  async getEventForm(id: number): Promise<any> {
-    return this.eventForms.get(id) || null;
+  async getEventForm(id: number) {
+    return ticketDb.getEventForm(id);
   }
 
-  async getPublishedForm(): Promise<any> {
-    const forms = Array.from(this.eventForms.values());
-    return forms.find((f) => f.isPublished) || null;
+  async getPublishedForm() {
+    return ticketDb.getPublishedForm();
   }
 
-  async getAllEventForms(): Promise<any[]> {
-    return Array.from(this.eventForms.values());
+  async getAllEventForms() {
+    return ticketDb.getAllEventForms();
   }
 
-  async updateEventForm(id: number, data: any): Promise<boolean> {
-    const form = this.eventForms.get(id);
-    if (!form) return false;
-
-    Object.assign(form, {
-      ...data,
-      updatedAt: new Date().toISOString(),
-    });
-    this.eventForms.set(id, form);
-    return true;
+  async updateEventForm(id: number, data: any) {
+    return ticketDb.updateEventForm(id, data);
   }
 
-  async publishEventForm(id: number): Promise<boolean> {
-    const form = this.eventForms.get(id);
-    if (!form) return false;
-
-    // Unpublish all other forms
-    Array.from(this.eventForms.values()).forEach(f => {
-      f.isPublished = false;
-    });
-
-    form.isPublished = true;
-    this.eventForms.set(id, form);
-    return true;
+  async publishEventForm(id: number) {
+    return ticketDb.publishEventForm(id);
   }
 
-  async unpublishEventForm(id: number): Promise<boolean> {
-    const form = this.eventForms.get(id);
-    if (!form) return false;
-
-    form.isPublished = false;
-    this.eventForms.set(id, form);
-    return true;
+  async unpublishEventForm(id: number) {
+    return ticketDb.unpublishEventForm(id);
   }
 
-  async deleteEventForm(id: number): Promise<boolean> {
-    return this.eventForms.delete(id);
+  async deleteEventForm(id: number) {
+    return ticketDb.deleteEventForm(id);
   }
 
   exportToCSV(registrations: Registration[]): string {
@@ -413,4 +260,4 @@ class MemStorage implements IStorage {
   }
 }
 
-export const storage = new MemStorage();
+export const storage = ticketDb;
