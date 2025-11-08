@@ -163,149 +163,179 @@ export default function FormsList({ onFormClick }: FormsListProps) {
         </Card>
       ) : (
         <div className="grid gap-4">
-          {forms.map((form) => (
-            <Card key={`form-${form.id}`} data-testid={`form-card-${form.id}`}>
-              <CardHeader>
-                <div className="flex items-start justify-between">
-                  <div className="space-y-1 flex-1">
-                    <div className="flex items-center gap-2">
-                      <CardTitle onClick={() => onFormClick?.(form.id)} data-testid={`form-title-${form.id}`} className="cursor-pointer">
-                        {form.title}
-                      </CardTitle>
-                      {form.isPublished ? (
-                        <Badge variant="default" data-testid={`badge-published-${form.id}`}>
-                          <Globe className="h-3 w-3 mr-1" />
-                          Published
-                        </Badge>
-                      ) : (
-                        <Badge variant="secondary" data-testid={`badge-draft-${form.id}`}>
-                          Draft
-                        </Badge>
+          {forms.map((form) => {
+            // Ensure formId is properly extracted
+            const formId = typeof form.id === 'number' ? form.id : 0;
+            
+            // Skip forms with invalid IDs
+            if (!formId) {
+              console.warn("Form with invalid ID detected:", form);
+              return null;
+            }
+            
+            return (
+              <Card key={formId} data-testid={`form-card-${formId}`}>
+                <CardHeader>
+                  <div className="flex items-start justify-between">
+                    <div className="space-y-1 flex-1">
+                      <div className="flex items-center gap-2">
+                        <CardTitle onClick={() => onFormClick?.(formId)} data-testid={`form-title-${formId}`} className="cursor-pointer">
+                          {form.title}
+                        </CardTitle>
+                        {form.isPublished ? (
+                          <Badge variant="default" data-testid={`badge-published-${formId}`}>
+                            <Globe className="h-3 w-3 mr-1" />
+                            Published
+                          </Badge>
+                        ) : (
+                          <Badge variant="secondary" data-testid={`badge-draft-${formId}`}>
+                            Draft
+                          </Badge>
+                        )}
+                      </div>
+                      {form.subtitle && (
+                        <CardDescription>{form.subtitle}</CardDescription>
                       )}
                     </div>
-                    {form.subtitle && (
-                      <CardDescription>{form.subtitle}</CardDescription>
-                    )}
-                  </div>
-                  <div className="flex gap-2">
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => setEditingFormId(form.id)}
-                      data-testid={`button-edit-${form.id}`}
-                    >
-                      <Edit className="h-4 w-4" />
-                    </Button>
-                    {form.isPublished ? (
+                    <div className="flex gap-2">
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => {
-                          if (form.id) {
-                            unpublishMutation.mutate(form.id);
-                          } else {
-                            toast({
-                              title: "Error",
-                              description: "Form ID is missing",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                        disabled={unpublishMutation.isPending || !form.id}
-                        data-testid={`button-unpublish-${form.id}`}
+                        onClick={() => setEditingFormId(formId)}
+                        data-testid={`button-edit-${formId}`}
+                        title="Edit Form"
                       >
-                        <XCircle className="h-4 w-4" />
+                        <Edit className="h-4 w-4" />
                       </Button>
-                    ) : (
-                      <Button
-                        variant="outline"
-                        size="icon"
-                        onClick={() => {
-                          if (form.id) {
-                            publishMutation.mutate(form.id);
-                          } else {
-                            toast({
-                              title: "Error",
-                              description: "Form ID is missing",
-                              variant: "destructive",
-                            });
-                          }
-                        }}
-                        disabled={publishMutation.isPending || !form.id}
-                        data-testid={`button-publish-${form.id}`}
-                      >
-                        <Globe className="h-4 w-4" />
-                      </Button>
-                    )}
-                    <AlertDialog>
-                      <AlertDialogTrigger asChild>
+                      {form.isPublished ? (
                         <Button
                           variant="outline"
                           size="icon"
-                          data-testid={`button-delete-${form.id}`}
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (formId && typeof formId === 'number') {
+                              console.log("Unpublishing form:", formId);
+                              unpublishMutation.mutate(formId);
+                            } else {
+                              console.error("Invalid form ID:", formId);
+                              toast({
+                                title: "Error",
+                                description: "Invalid form ID",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          disabled={unpublishMutation.isPending}
+                          data-testid={`button-unpublish-${formId}`}
+                          title="Unpublish Form"
                         >
-                          <Trash2 className="h-4 w-4" />
+                          {unpublishMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <XCircle className="h-4 w-4" />
+                          )}
                         </Button>
-                      </AlertDialogTrigger>
-                      <AlertDialogContent>
-                        <AlertDialogHeader>
-                          <AlertDialogTitle>Delete Form</AlertDialogTitle>
-                          <AlertDialogDescription>
-                            Are you sure you want to delete this form? This action cannot be undone.
-                          </AlertDialogDescription>
-                        </AlertDialogHeader>
-                        <AlertDialogFooter>
-                          <AlertDialogCancel>Cancel</AlertDialogCancel>
-                          <AlertDialogAction
-                            onClick={() => deleteMutation.mutate(form.id)}
-                            data-testid={`button-confirm-delete-${form.id}`}
+                      ) : (
+                        <Button
+                          variant="outline"
+                          size="icon"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            if (formId && typeof formId === 'number') {
+                              console.log("Publishing form:", formId);
+                              publishMutation.mutate(formId);
+                            } else {
+                              console.error("Invalid form ID:", formId);
+                              toast({
+                                title: "Error",
+                                description: "Invalid form ID",
+                                variant: "destructive",
+                              });
+                            }
+                          }}
+                          disabled={publishMutation.isPending}
+                          data-testid={`button-publish-${formId}`}
+                          title="Publish Form"
+                        >
+                          {publishMutation.isPending ? (
+                            <Loader2 className="h-4 w-4 animate-spin" />
+                          ) : (
+                            <Globe className="h-4 w-4" />
+                          )}
+                        </Button>
+                      )}
+                      <AlertDialog>
+                        <AlertDialogTrigger asChild>
+                          <Button
+                            variant="outline"
+                            size="icon"
+                            data-testid={`button-delete-${formId}`}
+                            title="Delete Form"
                           >
-                            Delete
-                          </AlertDialogAction>
-                        </AlertDialogFooter>
-                      </AlertDialogContent>
-                    </AlertDialog>
-                    <Button
-                      variant="outline"
-                      size="icon"
-                      onClick={() => onFormClick?.(form.id)}
-                      data-testid={`button-view-form-${form.id}`}
-                    >
-                      <Eye className="h-4 w-4" />
-                    </Button>
+                            <Trash2 className="h-4 w-4" />
+                          </Button>
+                        </AlertDialogTrigger>
+                        <AlertDialogContent>
+                          <AlertDialogHeader>
+                            <AlertDialogTitle>Delete Form</AlertDialogTitle>
+                            <AlertDialogDescription>
+                              Are you sure you want to delete this form? This action cannot be undone.
+                            </AlertDialogDescription>
+                          </AlertDialogHeader>
+                          <AlertDialogFooter>
+                            <AlertDialogCancel>Cancel</AlertDialogCancel>
+                            <AlertDialogAction
+                              onClick={() => deleteMutation.mutate(formId)}
+                              data-testid={`button-confirm-delete-${formId}`}
+                            >
+                              Delete
+                            </AlertDialogAction>
+                          </AlertDialogFooter>
+                        </AlertDialogContent>
+                      </AlertDialog>
+                      <Button
+                        variant="outline"
+                        size="icon"
+                        onClick={() => onFormClick?.(formId)}
+                        data-testid={`button-view-form-${formId}`}
+                        title="View Form Details"
+                      >
+                        <Eye className="h-4 w-4" />
+                      </Button>
+                    </div>
                   </div>
-                </div>
-              </CardHeader>
-              <CardContent>
-                <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
-                  {form.heroImageUrl && (
+                </CardHeader>
+                <CardContent>
+                  <div className="grid grid-cols-2 md:grid-cols-4 gap-4 text-sm">
+                    {form.heroImageUrl && (
+                      <div>
+                        <span className="text-muted-foreground">Hero Image:</span>
+                        <span className="ml-2">✓</span>
+                      </div>
+                    )}
+                    {form.watermarkUrl && (
+                      <div>
+                        <span className="text-muted-foreground">Watermark:</span>
+                        <span className="ml-2">✓</span>
+                      </div>
+                    )}
+                    {form.logoUrl && (
+                      <div>
+                        <span className="text-muted-foreground">Logo:</span>
+                        <span className="ml-2">✓</span>
+                      </div>
+                    )}
                     <div>
-                      <span className="text-muted-foreground">Hero Image:</span>
-                      <span className="ml-2">✓</span>
+                      <span className="text-muted-foreground">Updated:</span>
+                      <span className="ml-2">
+                        {new Date(form.updatedAt).toLocaleDateString()}
+                      </span>
                     </div>
-                  )}
-                  {form.watermarkUrl && (
-                    <div>
-                      <span className="text-muted-foreground">Watermark:</span>
-                      <span className="ml-2">✓</span>
-                    </div>
-                  )}
-                  {form.logoUrl && (
-                    <div>
-                      <span className="text-muted-foreground">Logo:</span>
-                      <span className="ml-2">✓</span>
-                    </div>
-                  )}
-                  <div>
-                    <span className="text-muted-foreground">Updated:</span>
-                    <span className="ml-2">
-                      {new Date(form.updatedAt).toLocaleDateString()}
-                    </span>
                   </div>
-                </div>
-              </CardContent>
-            </Card>
-          ))}
+                </CardContent>
+              </Card>
+            );
+          })}
         </div>
       )}
     </div>
