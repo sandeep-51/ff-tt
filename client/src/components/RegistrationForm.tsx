@@ -337,7 +337,18 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const onSubmit = (data: any) => {
     console.log("🚀 Attempting to submit form...");
     console.log("Form validation passed, data:", data);
+    console.log("Form errors:", form.formState.errors);
     mutation.mutate(data);
+  };
+
+  const handleSubmitError = (errors: any) => {
+    console.error("❌ Form validation failed:", errors);
+    console.log("All form errors:", errors);
+    toast({
+      title: "Validation Error",
+      description: "Please check all required fields and try again.",
+      variant: "destructive",
+    });
   };
 
   if (submittedData) {
@@ -554,7 +565,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </CardHeader>
               <CardContent>
                 <Form {...form}>
-                  <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6">
+                  <form onSubmit={form.handleSubmit(onSubmit, handleSubmitError)} className="space-y-6">
                     {/* Squad Leader Section */}
                     <div className="space-y-4">
                       <h3 className="text-[#ff6b35] font-semibold text-lg">SQUAD LEADER (YOU)</h3>
@@ -567,12 +578,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-gray-300">
-                                  {baseFields.name.label}
-                                  {baseFields.name.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                  {baseFields.name?.label}
+                                  {baseFields.name?.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
                                   <Input
-                                    placeholder={baseFields.name.placeholder || "Enter your name"}
+                                    placeholder={baseFields.name?.placeholder || "Enter your name"}
                                     {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
                                     data-testid="input-name"
@@ -619,13 +630,13 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-gray-300">
-                                  {baseFields.phone.label}
-                                  {baseFields.phone.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                  {baseFields.phone?.label}
+                                  {baseFields.phone?.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     type="tel"
-                                    placeholder={baseFields.phone.placeholder || "10-digit mobile number"}
+                                    placeholder={baseFields.phone?.placeholder || "10-digit mobile number"}
                                     {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
                                     data-testid="input-phone"
@@ -644,13 +655,13 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             render={({ field }) => (
                               <FormItem>
                                 <FormLabel className="text-gray-300">
-                                  {baseFields.email.label}
-                                  {baseFields.email.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                  {baseFields.email?.label}
+                                  {baseFields.email?.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
                                   <Input
                                     type="email"
-                                    placeholder={baseFields.email.placeholder || "valid@email.com"}
+                                    placeholder={baseFields.email?.placeholder || "valid@email.com"}
                                     {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
                                     data-testid="input-email"
@@ -820,12 +831,10 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                                       setUploadingField(customField.id);
                                                       try {
                                                         const formData = new FormData();
-                                                        formData.append("file", file);
-                                                        const result = await apiRequest("/api/upload", {
-                                                          method: "POST",
-                                                          body: formData,
-                                                        });
-                                                        form.setValue(`teamMembers.${index}.${customField.id}`, result.imageUrl);
+                                                        formData.append("photo", file);
+                                                        const response = await apiRequest("POST", "/api/upload-photo", formData);
+                                                        const result = await response.json();
+                                                        form.setValue(`teamMembers.${index}.${customField.id}`, result.photoUrl);
                                                         toast({
                                                           title: "Image Uploaded",
                                                           description: "Image has been uploaded successfully",
