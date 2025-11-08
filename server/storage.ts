@@ -24,6 +24,7 @@ export interface IStorage {
   deleteEventForm(id: number): Promise<boolean>;
   deleteRegistration(id: string): Promise<boolean>;
   revokeQRCode(id: string): Promise<boolean>;
+  updateRegistration(id: string, data: Partial<InsertRegistration>): Promise<boolean>;
   getRegistrationsByFormId(formId: number, limit?: number, offset?: number): Promise<Registration[]>;
   getRegistrationsByFormIdCount(formId: number): Promise<number>;
   getFormStats(formId: number): Promise<any>;
@@ -76,6 +77,10 @@ export class SqliteStorage implements IStorage {
 
   async revokeQRCode(id: string): Promise<boolean> {
     return ticketDb.revokeQRCode(id);
+  }
+
+  async updateRegistration(id: string, data: Partial<InsertRegistration>): Promise<boolean> {
+    return ticketDb.updateRegistration(id, data);
   }
 
   async createEventForm(data: any) {

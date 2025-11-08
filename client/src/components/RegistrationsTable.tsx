@@ -1,8 +1,18 @@
 import { useState } from "react";
+import { useMutation } from "@tanstack/react-query";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
+import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
 import {
   Table,
   TableBody,
@@ -27,7 +37,10 @@ import {
   CollapsibleContent,
   CollapsibleTrigger,
 } from "@/components/ui/collapsible";
-import { Search, QrCode, CheckCircle2, XCircle, Clock, Trash2, Ban, ChevronDown, ChevronRight, User, Mail, Phone, Image as ImageIcon } from "lucide-react";
+import { Search, QrCode, CheckCircle2, XCircle, Clock, Trash2, Ban, ChevronDown, ChevronRight, User, Mail, Phone, Image as ImageIcon, Edit, Plus } from "lucide-react";
+import { useToast } from "@/hooks/use-toast";
+import { apiRequest, queryClient } from "@/lib/queryClient";
+import type { TeamMember } from "@shared/schema";
 
 export interface Registration {
   id: string;
@@ -43,6 +56,7 @@ export interface Registration {
   status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt?: string;
   customFieldData?: Record<string, any>;
+  teamMembers?: TeamMember[];
 }
 
 interface RegistrationsTableProps {
@@ -54,6 +68,7 @@ interface RegistrationsTableProps {
   onGenerateQR?: (id: string) => void;
   onDeleteRegistration?: (id: string) => void;
   onRevokeQR?: (id: string) => void;
+  onUpdateRegistration?: (id: string) => void;
 }
 
 export default function RegistrationsTable({
@@ -65,9 +80,14 @@ export default function RegistrationsTable({
   onGenerateQR,
   onDeleteRegistration,
   onRevokeQR,
+  onUpdateRegistration,
 }: RegistrationsTableProps) {
+  const { toast } = useToast();
   const [searchQuery, setSearchQuery] = useState("");
   const [expandedRows, setExpandedRows] = useState<Set<string>>(new Set());
+  const [editingRegistration, setEditingRegistration] = useState<Registration | null>(null);
+  const [editedTeamMembers, setEditedTeamMembers] = useState<TeamMember[]>([]);
+  const [editDialogOpen, setEditDialogOpen] = useState(false);
   
   const totalPages = Math.ceil((totalCount || registrations.length) / pageSize);
 
@@ -105,6 +125,61 @@ export default function RegistrationsTable({
         {config.label}
       </Badge>
     );
+  };
+
+  const updateMutation = useMutation({
+    mutationFn: async (data: { id: string; teamMembers: TeamMember[] }) => {
+      const response = await apiRequest("PUT", `/api/admin/registrations/${data.id}`, {
+        teamMembers: data.teamMembers,
+      });
+      return response.json();
+    },
+    onSuccess: () => {
+      toast({
+        title: "Updated Successfully",
+        description: "Team members have been updated.",
+      });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/registrations"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/admin/forms"] });
+      setEditDialogOpen(false);
+      onUpdateRegistration?.(editingRegistration?.id || "");
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Update Failed",
+        description: error.message || "Failed to update team members",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const handleEditTeamMembers = (registration: Registration) => {
+    setEditingRegistration(registration);
+    setEditedTeamMembers(registration.teamMembers || []);
+    setEditDialogOpen(true);
+  };
+
+  const handleSaveTeamMembers = () => {
+    if (editingRegistration) {
+      updateMutation.mutate({
+        id: editingRegistration.id,
+        teamMembers: editedTeamMembers,
+      });
+    }
+  };
+
+  const handleAddTeamMember = () => {
+    setEditedTeamMembers([...editedTeamMembers, { name: "", email: "", phone: "" }]);
+  };
+
+  const handleRemoveTeamMember = (index: number) => {
+    setEditedTeamMembers(editedTeamMembers.filter((_, i) => i !== index));
+  };
+
+  const handleUpdateTeamMember = (index: number, field: keyof TeamMember, value: string) => {
+    const updated = [...editedTeamMembers];
+    updated[index] = { ...updated[index], [field]: value };
+    setEditedTeamMembers(updated);
   };
 
   return (
@@ -276,10 +351,21 @@ export default function RegistrationsTable({
                                   {/* Team Members Section */}
                                   {reg.teamMembers && reg.teamMembers.length > 0 && (
                                     <div>
-                                      <h4 className="text-sm font-semibold mb-3 flex items-center gap-2">
-                                        <User className="h-4 w-4" />
-                                        Team Members ({reg.teamMembers.length})
-                                      </h4>
+                                      <div className="flex items-center justify-between mb-3">
+                                        <h4 className="text-sm font-semibold flex items-center gap-2">
+                                          <User className="h-4 w-4" />
+                                          Team Members ({reg.teamMembers.length})
+                                        </h4>
+                                        <Button
+                                          size="sm"
+                                          variant="outline"
+                                          onClick={() => handleEditTeamMembers(reg)}
+                                          data-testid="button-edit-team-members"
+                                        >
+                                          <Edit className="h-4 w-4 mr-2" />
+                                          Edit Team
+                                        </Button>
+                                      </div>
                                       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-3">
                                         {reg.teamMembers.map((member, idx) => (
                                           <Card key={idx} className="bg-background">
@@ -381,6 +467,89 @@ export default function RegistrationsTable({
           </CardContent>
         </Card>
       )}
+
+      {/* Edit Team Members Dialog */}
+      <Dialog open={editDialogOpen} onOpenChange={setEditDialogOpen}>
+        <DialogContent className="max-w-3xl max-h-[80vh] overflow-y-auto">
+          <DialogHeader>
+            <DialogTitle>Edit Team Members</DialogTitle>
+            <DialogDescription>
+              Update team member details for registration {editingRegistration?.id}
+            </DialogDescription>
+          </DialogHeader>
+          <div className="space-y-4 py-4">
+            {editedTeamMembers.map((member, index) => (
+              <Card key={index} className="p-4">
+                <div className="space-y-3">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-medium">Member {index + 1}</h4>
+                    <Button
+                      size="sm"
+                      variant="destructive"
+                      onClick={() => handleRemoveTeamMember(index)}
+                      data-testid={`button-remove-member-${index}`}
+                    >
+                      <Trash2 className="h-4 w-4 mr-1" />
+                      Remove
+                    </Button>
+                  </div>
+                  <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <div className="space-y-2">
+                      <Label htmlFor={`name-${index}`}>Name</Label>
+                      <Input
+                        id={`name-${index}`}
+                        value={member.name}
+                        onChange={(e) => handleUpdateTeamMember(index, "name", e.target.value)}
+                        placeholder="Member name"
+                        data-testid={`input-member-name-${index}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`email-${index}`}>Email</Label>
+                      <Input
+                        id={`email-${index}`}
+                        type="email"
+                        value={member.email || ""}
+                        onChange={(e) => handleUpdateTeamMember(index, "email", e.target.value)}
+                        placeholder="member@example.com"
+                        data-testid={`input-member-email-${index}`}
+                      />
+                    </div>
+                    <div className="space-y-2">
+                      <Label htmlFor={`phone-${index}`}>Phone</Label>
+                      <Input
+                        id={`phone-${index}`}
+                        type="tel"
+                        value={member.phone || ""}
+                        onChange={(e) => handleUpdateTeamMember(index, "phone", e.target.value)}
+                        placeholder="+1 (555) 123-4567"
+                        data-testid={`input-member-phone-${index}`}
+                      />
+                    </div>
+                  </div>
+                </div>
+              </Card>
+            ))}
+            <Button
+              variant="outline"
+              onClick={handleAddTeamMember}
+              className="w-full"
+              data-testid="button-add-member"
+            >
+              <Plus className="h-4 w-4 mr-2" />
+              Add Team Member
+            </Button>
+          </div>
+          <DialogFooter>
+            <Button variant="outline" onClick={() => setEditDialogOpen(false)}>
+              Cancel
+            </Button>
+            <Button onClick={handleSaveTeamMembers} disabled={updateMutation.isPending} data-testid="button-save-team-members">
+              {updateMutation.isPending ? "Saving..." : "Save Changes"}
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

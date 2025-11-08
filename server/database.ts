@@ -159,7 +159,7 @@ export class TicketDatabase {
   createRegistration(data: InsertRegistration): Registration {
     const id = this.generateTicketId();
     const groupSize = data.groupSize || 1;
-    const maxScans = groupSize * 4;
+    const maxScans = groupSize * 1;
 
     const stmt = this.db.prepare(`
       INSERT INTO registrations (id, name, email, phone, organization, groupSize, maxScans, formId, customFieldData, teamMembers)
@@ -443,6 +443,58 @@ export class TicketDatabase {
       WHERE id = ?
     `);
     const result = stmt.run(id);
+    return result.changes > 0;
+  }
+
+  // Update registration
+  updateRegistration(id: string, data: Partial<InsertRegistration>): boolean {
+    const registration = this.getRegistration(id);
+    if (!registration) return false;
+
+    const updates: string[] = [];
+    const values: any[] = [];
+
+    if (data.name !== undefined) {
+      updates.push('name = ?');
+      values.push(data.name);
+    }
+    if (data.email !== undefined) {
+      updates.push('email = ?');
+      values.push(data.email);
+    }
+    if (data.phone !== undefined) {
+      updates.push('phone = ?');
+      values.push(data.phone);
+    }
+    if (data.organization !== undefined) {
+      updates.push('organization = ?');
+      values.push(data.organization);
+    }
+    if (data.groupSize !== undefined) {
+      updates.push('groupSize = ?');
+      values.push(data.groupSize);
+      updates.push('maxScans = ?');
+      values.push(data.groupSize * 1);
+    }
+    if (data.customFieldData !== undefined) {
+      updates.push('customFieldData = ?');
+      values.push(JSON.stringify(data.customFieldData));
+    }
+    if (data.teamMembers !== undefined) {
+      updates.push('teamMembers = ?');
+      values.push(JSON.stringify(data.teamMembers));
+    }
+
+    if (updates.length === 0) return false;
+
+    values.push(id);
+    const stmt = this.db.prepare(`
+      UPDATE registrations
+      SET ${updates.join(', ')}
+      WHERE id = ?
+    `);
+    
+    const result = stmt.run(...values);
     return result.changes > 0;
   }
 

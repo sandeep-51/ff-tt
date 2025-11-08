@@ -6,6 +6,7 @@ import QRCode from "qrcode";
 import multer from "multer";
 import path from "path";
 import fs from "fs";
+import { z } from "zod";
 import { storage } from "./storage";
 import { insertRegistrationSchema, adminLoginSchema, eventFormSchema } from "@shared/schema";
 import { stringify } from "csv-stringify/sync";
@@ -315,6 +316,43 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
     } catch (error: any) {
       res.status(500).json({ error: error.message || "Failed to revoke QR code" });
+    }
+  });
+
+  // PUT /api/admin/registrations/:id - Update a registration
+  app.put("/api/admin/registrations/:id", requireAdmin, express.json(), async (req, res) => {
+    try {
+      const { id } = req.params;
+      
+      // Validate the update payload
+      const updateSchema = z.object({
+        name: z.string().optional(),
+        email: z.string().email().optional(),
+        phone: z.string().optional(),
+        organization: z.string().optional(),
+        groupSize: z.number().int().positive().optional(),
+        customFieldData: z.record(z.string()).optional(),
+        teamMembers: z.array(z.object({
+          name: z.string().min(1, "Member name is required"),
+          email: z.string().email().optional().or(z.literal("")),
+          phone: z.string().optional(),
+        })).optional(),
+      });
+
+      const validatedData = updateSchema.parse(req.body);
+      const success = await storage.updateRegistration(id, validatedData);
+      
+      if (success) {
+        const updatedReg = await storage.getRegistration(id);
+        res.json({ success: true, registration: updatedReg, message: "Registration updated successfully" });
+      } else {
+        res.status(404).json({ error: "Registration not found" });
+      }
+    } catch (error: any) {
+      if (error.name === 'ZodError') {
+        return res.status(400).json({ error: "Invalid data format", details: error.errors });
+      }
+      res.status(500).json({ error: error.message || "Failed to update registration" });
     }
   });
 

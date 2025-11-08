@@ -3,6 +3,14 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/com
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
 import {
+  Dialog,
+  DialogContent,
+  DialogDescription,
+  DialogFooter,
+  DialogHeader,
+  DialogTitle,
+} from "@/components/ui/dialog";
+import {
   Camera,
   CheckCircle2,
   XCircle,
@@ -33,6 +41,7 @@ export default function QRScanner({ onScan }: QRScannerProps) {
   const [lastResult, setLastResult] = useState<ScanResult | null>(null);
   const [scanHistory, setScanHistory] = useState<ScanResult[]>([]);
   const [error, setError] = useState<string | null>(null);
+  const [showAlreadyScannedDialog, setShowAlreadyScannedDialog] = useState(false);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const qrCodeRegionId = "qr-code-scanner-region";
   const lastScannedRef = useRef<string | null>(null);
@@ -112,7 +121,11 @@ export default function QRScanner({ onScan }: QRScannerProps) {
       try {
         const result = await Promise.resolve(onScan(ticketId));
         if (result) {
-          setLastResult(result);
+          if (!result.valid && result.scansUsed > 0) {
+            setShowAlreadyScannedDialog(true);
+          } else {
+            setLastResult(result);
+          }
           setScanHistory((prev) => [result, ...prev].slice(0, 10));
         }
       } finally {
@@ -306,6 +319,26 @@ export default function QRScanner({ onScan }: QRScannerProps) {
           </Card>
         </div>
       </div>
+
+      {/* Already Scanned Dialog */}
+      <Dialog open={showAlreadyScannedDialog} onOpenChange={setShowAlreadyScannedDialog}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle className="flex items-center gap-2 text-destructive">
+              <XCircle className="h-5 w-5" />
+              Already Scanned
+            </DialogTitle>
+            <DialogDescription>
+              This QR code has already been scanned. Entry has already been recorded.
+            </DialogDescription>
+          </DialogHeader>
+          <DialogFooter>
+            <Button onClick={() => setShowAlreadyScannedDialog(false)} data-testid="button-close-dialog">
+              Close
+            </Button>
+          </DialogFooter>
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

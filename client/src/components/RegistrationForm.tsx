@@ -655,6 +655,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                               />
                             ) : customField.type === "photo" ? (
                               <div className="space-y-2">
+                                <div className="p-3 bg-primary/5 border border-primary/20 rounded-md">
+                                  <p className="text-sm text-muted-foreground">
+                                    Please upload a clear, high-quality photo. Ensure proper lighting and the photo is in focus. Accepted formats: JPG, PNG, GIF, WEBP (max 5MB)
+                                  </p>
+                                </div>
                                 <Input
                                   type="file"
                                   accept="image/*"
