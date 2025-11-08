@@ -169,11 +169,19 @@ export async function sendQRCodeEmail(
         </body>
         </html>
       `,
-      inline: imageBuffer,
+      inline: [
+        {
+          filename: `QR-Code-${registration.id}.png`,
+          data: imageBuffer,
+          contentType: 'image/png',
+          cid: 'qrcode'
+        }
+      ],
       attachment: [
         {
           filename: `QR-Code-${registration.id}.png`,
           data: imageBuffer,
+          contentType: 'image/png'
         }
       ]
     };
