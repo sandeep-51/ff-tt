@@ -1,3 +1,4 @@
+
 import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -18,7 +19,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
-import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2, DollarSign } from "lucide-react";
+import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2, DollarSign, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
 import type { EventForm, CustomField } from "@shared/schema";
@@ -102,7 +103,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const title = publishedForm?.title || "Event Registration";
   const subtitle = publishedForm?.subtitle || "Register now to receive your secure QR-based entry pass";
   const heroImage = publishedForm?.heroImageUrl || freeFireBgImage;
-  const backgroundImage = publishedForm?.backgroundImageUrl || freeFireBgImage; // New: Add background image URL
+  const backgroundImage = publishedForm?.backgroundImageUrl || freeFireBgImage;
   const watermarkUrl = publishedForm?.watermarkUrl;
   const logoUrl = publishedForm?.logoUrl;
   const customLinks = publishedForm?.customLinks || [];
@@ -129,7 +130,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     memberPhoneLabel: "Phone Number",
     memberPhonePlaceholder: "+1 (555) 123-4567",
   };
-
 
   const registrationSchema = useMemo(() => buildDynamicSchema(customFields, baseFields), [customFields, baseFields]);
   type RegistrationFormData = z.infer<typeof registrationSchema>;
@@ -243,61 +243,65 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
   if (submittedData) {
     return (
-      <div className="min-h-screen flex items-center justify-center p-6">
+      <div className="min-h-screen flex items-center justify-center p-6 bg-[#1a1d29]">
         <div className="max-w-2xl w-full space-y-8">
           <div className="text-center space-y-6">
             <div className="flex justify-center">
-              <div className="h-24 w-24 rounded-full bg-primary/10 flex items-center justify-center">
-                <CheckCircle2 className="h-12 w-12 text-primary" />
+              <div className="h-24 w-24 rounded-full bg-[#ff6b35]/20 flex items-center justify-center">
+                <CheckCircle2 className="h-12 w-12 text-[#ff6b35]" />
               </div>
             </div>
             <div className="space-y-2">
-              <h1 className="text-4xl font-bold">{successTitle}</h1>
-              <p className="text-lg text-muted-foreground">
+              <h1 className="text-4xl font-bold text-white">{successTitle}</h1>
+              <p className="text-lg text-gray-400">
                 {successMessage}
               </p>
             </div>
           </div>
 
-          <Card>
+          <Card className="bg-[#232835] border-[#2d3548]">
             <CardHeader>
-              <CardTitle>Registration Details</CardTitle>
-              <CardDescription>Please save this information for your records</CardDescription>
+              <CardTitle className="text-white">Registration Details</CardTitle>
+              <CardDescription className="text-gray-400">Please save this information for your records</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <div>
-                  <p className="text-sm text-muted-foreground">Registration ID</p>
-                  <p className="font-medium font-mono">{submittedData.id}</p>
+                  <p className="text-sm text-gray-400">Registration ID</p>
+                  <p className="font-medium font-mono text-white">{submittedData.id}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Name</p>
-                  <p className="font-medium">{submittedData.name}</p>
+                  <p className="text-sm text-gray-400">Name</p>
+                  <p className="font-medium text-white">{submittedData.name}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Email</p>
-                  <p className="font-medium">{submittedData.email}</p>
+                  <p className="text-sm text-gray-400">Email</p>
+                  <p className="font-medium text-white">{submittedData.email}</p>
                 </div>
                 <div>
-                  <p className="text-sm text-muted-foreground">Phone</p>
-                  <p className="font-medium">{submittedData.phone}</p>
+                  <p className="text-sm text-gray-400">Phone</p>
+                  <p className="font-medium text-white">{submittedData.phone}</p>
                 </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Organization</p>
-                  <p className="font-medium">{submittedData.organization}</p>
-                </div>
-                <div>
-                  <p className="text-sm text-muted-foreground">Group Size</p>
-                  <p className="font-medium">{submittedData.groupSize} {submittedData.groupSize === 1 ? 'person' : 'people'}</p>
-                </div>
+                {submittedData.organization && (
+                  <div>
+                    <p className="text-sm text-gray-400">Organization</p>
+                    <p className="font-medium text-white">{submittedData.organization}</p>
+                  </div>
+                )}
+                {submittedData.groupSize && (
+                  <div>
+                    <p className="text-sm text-gray-400">Group Size</p>
+                    <p className="font-medium text-white">{submittedData.groupSize} {submittedData.groupSize === 1 ? 'person' : 'people'}</p>
+                  </div>
+                )}
               </div>
 
-              <div className="pt-4 border-t space-y-2">
-                <div className="flex items-center gap-2 text-sm text-muted-foreground">
+              <div className="pt-4 border-t border-[#2d3548] space-y-2">
+                <div className="flex items-center gap-2 text-sm text-gray-400">
                   <Shield className="h-4 w-4" />
                   <span>Your QR code entry pass will be generated by our admin team</span>
                 </div>
-                <p className="text-sm text-muted-foreground">
+                <p className="text-sm text-gray-400">
                   You will receive your QR code via email shortly. Please bring it with you to the event.
                 </p>
               </div>
@@ -311,6 +315,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                 setSubmittedData(null);
                 form.reset();
               }}
+              className="bg-transparent border-[#ff6b35] text-[#ff6b35] hover:bg-[#ff6b35]/10"
               data-testid="button-new-registration"
             >
               Register Another Person
@@ -321,453 +326,456 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     );
   }
 
+  // Payment field from custom fields
+  const paymentField = customFields.find(f => f.type === 'payment');
+
   return (
-    <div className="min-h-screen relative">
-      {/* Full-screen background image */}
-      {heroImage && (
-        <div className="fixed inset-0 z-0">
-          <img
-            src={heroImage}
-            alt={title}
-            className="w-full h-full object-cover object-center"
-            style={{ minHeight: '100vh', minWidth: '100vw' }}
-          />
-          <div className="absolute inset-0 bg-gradient-to-b from-black/70 via-black/60 to-black/80" />
-        </div>
-      )}
+    <div className="min-h-screen bg-[#1a1d29] relative overflow-hidden">
+      {/* Background Pattern */}
+      <div className="absolute inset-0 opacity-5">
+        <div className="absolute inset-0" style={{
+          backgroundImage: 'radial-gradient(circle, #ff6b35 1px, transparent 1px)',
+          backgroundSize: '30px 30px'
+        }} />
+      </div>
 
       {/* Admin Login Button - Top Right */}
       <div className="fixed top-4 right-4 z-20">
         <Button
           variant="outline"
           onClick={() => window.location.href = '/admin'}
-          className={heroImage ? "bg-white/10 backdrop-blur-sm border-white/20 text-white hover:bg-white/20" : ""}
+          className="bg-[#232835] border-[#2d3548] text-gray-300 hover:bg-[#2d3548] hover:text-white"
         >
           <Shield className="h-4 w-4 mr-2" />
           Admin Login
         </Button>
       </div>
 
-      {/* Content overlay */}
-      <div className="relative z-10">
-        <div className="relative py-12">
-          <div className="text-center space-y-4 px-6 mb-8">
-            {logoUrl && (
-              <div className="flex justify-center mb-6">
-                <img src={logoUrl} alt="Logo" className="h-16 w-auto" />
-              </div>
-            )}
-            <h1 className={`text-4xl md:text-5xl font-bold drop-shadow-lg ${heroImage ? "text-white" : "text-foreground"}`}>{title}</h1>
-            <p className={`text-lg md:text-xl max-w-2xl mx-auto drop-shadow-md ${heroImage ? "text-white/90" : "text-muted-foreground"}`}>
-              {subtitle}
-            </p>
+      {/* Content */}
+      <div className="relative z-10 container mx-auto px-4 py-8 max-w-7xl">
+        {/* Header */}
+        <div className="text-center mb-12">
+          {logoUrl && (
+            <div className="flex justify-center mb-6">
+              <img src={logoUrl} alt="Logo" className="h-20 w-auto" />
+            </div>
+          )}
+          <h1 className="text-5xl md:text-6xl font-bold mb-4">
+            <span className="text-[#ff6b35]">{title.split(' ')[0]}</span>
+            <span className="text-white"> {title.split(' ').slice(1).join(' ')}</span>
+          </h1>
+          <p className="text-xl text-gray-400">{subtitle}</p>
+        </div>
+
+        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+          {/* Left Column - Payment Info */}
+          <div className="lg:col-span-1 space-y-6">
+            {/* Registration Fee Card */}
+            <Card className="bg-gradient-to-br from-[#232835] to-[#1a1d29] border-2 border-[#ff6b35]/30">
+              <CardHeader>
+                <CardTitle className="text-[#ff6b35] text-lg">REGISTRATION FEE</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <div className="text-5xl font-bold text-white mb-4">₹99 <span className="text-xl text-gray-400">/ slot</span></div>
+                <p className="text-sm text-gray-400">
+                  You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad.
+                </p>
+              </CardContent>
+            </Card>
+
+            {/* How to Pay Card */}
+            <Card className="bg-[#232835] border-[#2d3548]">
+              <CardHeader>
+                <CardTitle className="text-[#ff6b35] text-lg">HOW TO PAY</CardTitle>
+              </CardHeader>
+              <CardContent className="space-y-3">
+                <div className="text-sm text-gray-300">
+                  <span className="text-white font-semibold">1.</span> Pay ₹99 to the UPI ID below.
+                </div>
+                <div className="text-sm text-gray-300">
+                  <span className="text-white font-semibold">2.</span> Take a clear screenshot of the success screen.
+                </div>
+                <div className="text-sm text-gray-300">
+                  <span className="text-white font-semibold">3.</span> Copy the Transaction ID.
+                </div>
+                <div className="text-sm text-gray-300">
+                  <span className="text-white font-semibold">4.</span> Complete the form on the right.
+                </div>
+                <div className="mt-4 p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
+                  <div className="text-xs text-gray-400 mb-1">OFFICIAL UPI ID</div>
+                  <div className="text-[#ff6b35] font-mono text-sm font-semibold">
+                    {paymentField?.paymentUrl?.replace('upi://', '').split('?')[0] || 'tournament@upi'}
+                  </div>
+                </div>
+              </CardContent>
+            </Card>
+
             {watermarkUrl && (
-              <div className="flex justify-center mt-8">
-                <img src={watermarkUrl} alt="Event" className="h-48 w-auto object-contain drop-shadow-2xl" />
+              <div className="flex justify-center">
+                <img src={watermarkUrl} alt="Event" className="h-48 w-auto object-contain opacity-50" />
               </div>
             )}
           </div>
-        </div>
 
-      <div className="max-w-4xl mx-auto px-6 pb-12 space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardContent className="pt-6 text-center space-y-2">
-              <Shield className="h-8 w-8 mx-auto text-primary" />
-              <h3 className="font-semibold">Secure Registration</h3>
-              <p className="text-sm text-muted-foreground">Your data is protected</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center space-y-2">
-              <CheckCircle2 className="h-8 w-8 mx-auto text-primary" />
-              <h3 className="font-semibold">Instant Confirmation</h3>
-              <p className="text-sm text-muted-foreground">Immediate verification</p>
-            </CardContent>
-          </Card>
-          <Card>
-            <CardContent className="pt-6 text-center space-y-2">
-              <Users className="h-8 w-8 mx-auto text-primary" />
-              <h3 className="font-semibold">Group Registration</h3>
-              <p className="text-sm text-muted-foreground">Up to 4 people per pass</p>
-            </CardContent>
-          </Card>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Registration Form</CardTitle>
-            <CardDescription>
-              Please fill out all fields to complete your registration
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <Form {...form}>
-              <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
-                {baseFields.name?.enabled && (
-                  <FormField
-                    control={form.control}
-                    name="name"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {baseFields.name.label}
-                          {baseFields.name.required && <span className="text-destructive ml-1">*</span>}
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder={baseFields.name.placeholder || ""} {...field} data-testid="input-name" />
-                        </FormControl>
-                        {baseFields.name.helpText && (
-                          <FormDescription className="text-sm text-muted-foreground mt-1">
-                            {baseFields.name.helpText}
-                          </FormDescription>
+          {/* Right Column - Registration Form */}
+          <div className="lg:col-span-2">
+            <Card className="bg-[#232835] border-[#2d3548]">
+              <CardHeader>
+                <CardTitle className="text-white text-2xl">TEAM REGISTRATION</CardTitle>
+              </CardHeader>
+              <CardContent>
+                <Form {...form}>
+                  <form onSubmit={form.handleSubmit(handleSubmit)} className="space-y-6">
+                    {/* Squad Leader Section */}
+                    <div className="space-y-4">
+                      <h3 className="text-[#ff6b35] font-semibold text-lg">SQUAD LEADER (YOU)</h3>
+                      
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {baseFields.name?.enabled && (
+                          <FormField
+                            control={form.control}
+                            name="name"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-300">
+                                  {baseFields.name.label}
+                                  {baseFields.name.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    placeholder={baseFields.name.placeholder || "Enter your name"} 
+                                    {...field} 
+                                    className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                    data-testid="input-name" 
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[#ff6b35]" />
+                              </FormItem>
+                            )}
+                          />
                         )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
 
-                {baseFields.email?.enabled && (
-                  <FormField
-                    control={form.control}
-                    name="email"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {baseFields.email.label}
-                          {baseFields.email.required && <span className="text-destructive ml-1">*</span>}
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="email" placeholder={baseFields.email.placeholder || ""} {...field} data-testid="input-email" />
-                        </FormControl>
-                        {baseFields.email.helpText && (
-                          <FormDescription className="text-sm text-muted-foreground mt-1">
-                            {baseFields.email.helpText}
-                          </FormDescription>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {baseFields.phone?.enabled && (
-                  <FormField
-                    control={form.control}
-                    name="phone"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {baseFields.phone.label}
-                          {baseFields.phone.required && <span className="text-destructive ml-1">*</span>}
-                        </FormLabel>
-                        <FormControl>
-                          <Input type="tel" placeholder={baseFields.phone.placeholder || ""} {...field} data-testid="input-phone" />
-                        </FormControl>
-                        {baseFields.phone.helpText && (
-                          <FormDescription className="text-sm text-muted-foreground mt-1">
-                            {baseFields.phone.helpText}
-                          </FormDescription>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {baseFields.organization?.enabled && (
-                  <FormField
-                    control={form.control}
-                    name="organization"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>
-                          {baseFields.organization.label}
-                          {baseFields.organization.required && <span className="text-destructive ml-1">*</span>}
-                        </FormLabel>
-                        <FormControl>
-                          <Input placeholder={baseFields.organization.placeholder || ""} {...field} data-testid="input-organization" />
-                        </FormControl>
-                        {baseFields.organization.helpText && (
-                          <FormDescription className="text-sm text-muted-foreground mt-1">
-                            {baseFields.organization.helpText}
-                          </FormDescription>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {baseFields.groupSize?.enabled && (
-                  <FormField
-                    control={form.control}
-                    name="groupSize"
-                    render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>{baseFields.groupSize?.label} {baseFields.groupSize?.required && "*"}</FormLabel>
-                        <FormControl>
-                          <RadioGroup
-                            onValueChange={field.onChange}
-                            defaultValue={field.value}
-                            className="flex gap-4"
-                            data-testid="radio-group-size"
-                          >
-                            {["1", "2", "3", "4"].map((size) => (
-                              <div key={size} className="flex items-center space-x-2">
-                                <RadioGroupItem
-                                  value={size}
-                                  id={`size-${size}`}
-                                  data-testid={`radio-size-${size}`}
-                                />
-                                <label
-                                  htmlFor={`size-${size}`}
-                                  className="text-sm font-medium cursor-pointer"
-                                >
-                                  {size} {size === "1" ? "person" : "people"}
-                                </label>
-                              </div>
-                            ))}
-                          </RadioGroup>
-                        </FormControl>
-                        {baseFields.groupSize.helpText && (
-                          <FormDescription className="text-sm text-muted-foreground mt-1">
-                            {baseFields.groupSize.helpText}
-                          </FormDescription>
-                        )}
-                        <FormMessage />
-                      </FormItem>
-                    )}
-                  />
-                )}
-
-                {/* Team Members Section */}
-                {teamMembersConfig.enabled && (
-                <Card className="border-2 border-primary/20">
-                  <CardHeader>
-                    <CardTitle className="flex items-center gap-2">
-                      <Users className="h-5 w-5" />
-                      {teamMembersConfig.label}
-                      {teamMembersConfig.required && <span className="text-destructive">*</span>}
-                    </CardTitle>
-                    <CardDescription>
-                      {teamMembersConfig.placeholder}
-                    </CardDescription>
-                    {teamMembersConfig.helpText && (
-                      <p className="text-sm text-muted-foreground mt-2">
-                        {teamMembersConfig.helpText}
-                      </p>
-                    )}
-                  </CardHeader>
-                  <CardContent className="space-y-4">
-                    <div className="mb-4 p-3 bg-primary/5 border border-primary/20 rounded-md">
-                      <p className="text-sm text-muted-foreground">
-                        Please fill in details for all {maxTeamMembers} team {maxTeamMembers === 1 ? 'member' : 'members'}
-                      </p>
-                    </div>
-
-                    {/* Team Member Details */}
-                    {teamMemberFields.map((field, index) => (
-                      <div key={field.id} className="p-4 border rounded-lg space-y-3 bg-background">
-                        <div className="flex items-center justify-between mb-2">
-                          <h4 className="font-medium">Member {index + 1} Details</h4>
-                        </div>
-                        <FormField
-                          control={form.control}
-                          name={`teamMembers.${index}.name`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{teamMembersConfig.memberNameLabel || "Full Name"} *</FormLabel>
-                              <FormControl>
-                                <Input placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} {...field} data-testid={`input-member-${index}-name`} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`teamMembers.${index}.email`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{teamMembersConfig.memberEmailLabel || "Email"}</FormLabel>
-                              <FormControl>
-                                <Input type="email" placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} {...field} data-testid={`input-member-${index}-email`} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                        <FormField
-                          control={form.control}
-                          name={`teamMembers.${index}.phone`}
-                          render={({ field }) => (
-                            <FormItem>
-                              <FormLabel>{teamMembersConfig.memberPhoneLabel || "Phone Number"}</FormLabel>
-                              <FormControl>
-                                <Input type="tel" placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} {...field} data-testid={`input-member-${index}-phone`} />
-                              </FormControl>
-                              <FormMessage />
-                            </FormItem>
-                          )}
-                        />
-                      </div>
-                    ))}
-                  </CardContent>
-                </Card>
-                )}
-
-                {customFields.map((customField) => {
-                  return (
-                    <FormField
-                      key={customField.id}
-                      control={form.control}
-                      name={customField.id}
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel>
-                            {customField.label}
-                            {customField.required && <span className="text-destructive ml-1">*</span>}
-                          </FormLabel>
-                          <FormControl>
-                            {customField.type === "textarea" ? (
-                              <Textarea
-                                placeholder={customField.placeholder || ""}
-                                {...field}
-                                rows={4}
-                                data-testid={`input-custom-${customField.id}`}
-                              />
-                            ) : customField.type === "photo" ? (
-                              <div className="space-y-2">
-                                <div className="p-3 bg-primary/5 border border-primary/20 rounded-md">
-                                  <p className="text-sm text-muted-foreground">
-                                    Please upload a clear, high-quality photo. Ensure proper lighting and the photo is in focus. Accepted formats: JPG, PNG, GIF, WEBP (max 5MB)
-                                  </p>
-                                </div>
-                                <Input
-                                  type="file"
-                                  accept="image/*"
-                                  onChange={async (e) => {
-                                    const file = e.target.files?.[0];
-                                    if (file) {
-                                      await handlePhotoUpload(customField.id, file);
-                                      e.target.value = "";
-                                    }
-                                  }}
-                                  disabled={uploadingField === customField.id}
-                                  data-testid={`input-custom-${customField.id}`}
-                                />
-                                {uploadingField === customField.id && (
-                                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
-                                    <Loader2 className="h-4 w-4 animate-spin" />
-                                    <span>Uploading...</span>
-                                  </div>
-                                )}
-                                {field.value && (
-                                  <div className="relative w-32 h-32 rounded-md overflow-hidden border">
-                                    <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
-                                  </div>
-                                )}
-                              </div>
-                            ) : customField.type === "payment" ? (
-                              <div className="space-y-3">
-                                {(customField as any).paymentUrl && (customField as any).paymentUrl.trim() !== '' ? (
-                                  <a
-                                    href={(customField as any).paymentUrl}
-                                    target="_blank"
-                                    rel="noopener noreferrer"
-                                    className="inline-flex items-center justify-center rounded-md bg-primary px-6 py-3 text-sm font-medium text-primary-foreground hover:bg-primary/90 transition-colors w-full"
-                                    data-testid={`button-payment-link-${customField.id}`}
-                                  >
-                                    <DollarSign className="mr-2 h-4 w-4" />
-                                    Proceed to Payment
-                                  </a>
-                                ) : (
-                                  <div className="p-3 bg-muted rounded-md text-sm text-muted-foreground">
-                                    Payment link not configured. Please contact the event organizer.
-                                  </div>
-                                )}
-                                <div>
+                        {customFields.filter(f => f.type !== 'payment' && f.type !== 'photo').slice(0, 1).map((customField) => (
+                          <FormField
+                            key={customField.id}
+                            control={form.control}
+                            name={customField.id}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-300">
+                                  {customField.label}
+                                  {customField.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
                                   <Input
-                                    type="text"
-                                    placeholder={customField.placeholder || "Enter transaction ID after payment"}
+                                    placeholder={customField.placeholder || ""}
                                     {...field}
                                     value={field.value || ""}
+                                    className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
                                     data-testid={`input-custom-${customField.id}`}
                                   />
-                                  {(customField as any).paymentUrl && (customField as any).paymentUrl.trim() !== '' && (
-                                    <p className="text-xs text-muted-foreground mt-2">
-                                      Click the button above to complete payment, then enter your transaction ID here
-                                    </p>
-                                  )}
-                                </div>
-                              </div>
-                            ) : (
-                              <Input
-                                type={
-                                  customField.type === "email"
-                                    ? "email"
-                                    : customField.type === "phone"
-                                    ? "tel"
-                                    : customField.type === "url"
-                                    ? "url"
-                                    : "text"
-                                }
-                                placeholder={customField.placeholder || ""}
-                                {...field}
-                                value={field.value || ""}
-                                data-testid={`input-custom-${customField.id}`}
-                              />
+                                </FormControl>
+                                <FormMessage className="text-[#ff6b35]" />
+                              </FormItem>
                             )}
-                          </FormControl>
-                          {customField.helpText && (
-                            <FormDescription className="text-sm text-muted-foreground mt-1">
-                              {customField.helpText}
-                            </FormDescription>
+                          />
+                        ))}
+                      </div>
+
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        {baseFields.phone?.enabled && (
+                          <FormField
+                            control={form.control}
+                            name="phone"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-300">
+                                  {baseFields.phone.label}
+                                  {baseFields.phone.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="tel" 
+                                    placeholder={baseFields.phone.placeholder || "10-digit mobile number"} 
+                                    {...field} 
+                                    className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                    data-testid="input-phone" 
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[#ff6b35]" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+
+                        {baseFields.email?.enabled && (
+                          <FormField
+                            control={form.control}
+                            name="email"
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-300">
+                                  {baseFields.email.label}
+                                  {baseFields.email.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
+                                  <Input 
+                                    type="email" 
+                                    placeholder={baseFields.email.placeholder || "valid@email.com"} 
+                                    {...field} 
+                                    className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                    data-testid="input-email" 
+                                  />
+                                </FormControl>
+                                <FormMessage className="text-[#ff6b35]" />
+                              </FormItem>
+                            )}
+                          />
+                        )}
+                      </div>
+                    </div>
+
+                    {/* Team Members Section */}
+                    {teamMembersConfig.enabled && (
+                      <div className="space-y-4">
+                        <div className="flex items-center justify-between">
+                          <h3 className="text-[#ff6b35] font-semibold text-lg">
+                            {teamMembersConfig.label.toUpperCase()}
+                          </h3>
+                          <span className="text-sm text-gray-400">(Optional, Max {maxTeamMembers})</span>
+                        </div>
+                        
+                        {teamMemberFields.map((field, index) => (
+                          <div key={field.id} className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
+                            <div className="flex items-center justify-between mb-3">
+                              <h4 className="font-medium text-gray-300">Member {index + 1}</h4>
+                            </div>
+                            <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                              <FormField
+                                control={form.control}
+                                name={`teamMembers.${index}.name`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberNameLabel || "Full Name"}</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} 
+                                        {...field} 
+                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                        data-testid={`input-member-${index}-name`} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage className="text-[#ff6b35]" />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`teamMembers.${index}.email`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberEmailLabel || "Email"}</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="email" 
+                                        placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} 
+                                        {...field} 
+                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                        data-testid={`input-member-${index}-email`} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage className="text-[#ff6b35]" />
+                                  </FormItem>
+                                )}
+                              />
+                              <FormField
+                                control={form.control}
+                                name={`teamMembers.${index}.phone`}
+                                render={({ field }) => (
+                                  <FormItem>
+                                    <FormLabel className="text-gray-400 text-sm">{teamMembersConfig.memberPhoneLabel || "Phone Number"}</FormLabel>
+                                    <FormControl>
+                                      <Input 
+                                        type="tel" 
+                                        placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} 
+                                        {...field} 
+                                        className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                        data-testid={`input-member-${index}-phone`} 
+                                      />
+                                    </FormControl>
+                                    <FormMessage className="text-[#ff6b35]" />
+                                  </FormItem>
+                                )}
+                              />
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Payment Verification Section */}
+                    {paymentField && (
+                      <div className="space-y-4">
+                        <div className="flex items-center gap-2">
+                          <AlertCircle className="h-5 w-5 text-[#ff6b35]" />
+                          <h3 className="text-[#ff6b35] font-semibold text-lg">PAYMENT VERIFICATION</h3>
+                        </div>
+                        
+                        <FormField
+                          control={form.control}
+                          name={paymentField.id}
+                          render={({ field }) => (
+                            <FormItem>
+                              <FormLabel className="text-gray-300">
+                                Transaction ID / UTR
+                                {paymentField.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                              </FormLabel>
+                              <FormControl>
+                                <Input
+                                  placeholder="e.g., 3245xxxxxxxxx"
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35] font-mono"
+                                  data-testid={`input-custom-${paymentField.id}`}
+                                />
+                              </FormControl>
+                              <FormMessage className="text-[#ff6b35]" />
+                            </FormItem>
                           )}
-                          <FormMessage />
-                        </FormItem>
+                        />
+
+                        {customFields.filter(f => f.type === 'photo').map((customField) => (
+                          <FormField
+                            key={customField.id}
+                            control={form.control}
+                            name={customField.id}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel className="text-gray-300">
+                                  {customField.label}
+                                  {customField.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                                </FormLabel>
+                                <FormControl>
+                                  <div className="space-y-2">
+                                    <Input
+                                      type="file"
+                                      accept="image/*"
+                                      onChange={async (e) => {
+                                        const file = e.target.files?.[0];
+                                        if (file) {
+                                          await handlePhotoUpload(customField.id, file);
+                                          e.target.value = "";
+                                        }
+                                      }}
+                                      disabled={uploadingField === customField.id}
+                                      className="bg-[#1a1d29] border-[#2d3548] text-gray-300 file:bg-[#ff6b35] file:text-white file:border-0 file:px-4 file:py-2 file:rounded file:font-semibold"
+                                      data-testid={`input-custom-${customField.id}`}
+                                    />
+                                    <p className="text-xs text-gray-500">* Max size 1MB. Clear image of success screen.</p>
+                                    {uploadingField === customField.id && (
+                                      <div className="flex items-center gap-2 text-sm text-gray-400">
+                                        <Loader2 className="h-4 w-4 animate-spin" />
+                                        <span>Uploading...</span>
+                                      </div>
+                                    )}
+                                    {field.value && (
+                                      <div className="relative w-32 h-32 rounded-md overflow-hidden border border-[#2d3548]">
+                                        <img src={field.value} alt="Uploaded" className="w-full h-full object-cover" />
+                                      </div>
+                                    )}
+                                  </div>
+                                </FormControl>
+                                <FormMessage className="text-[#ff6b35]" />
+                              </FormItem>
+                            )}
+                          />
+                        ))}
+                      </div>
+                    )}
+
+                    {/* Other Custom Fields */}
+                    {customFields.filter(f => f.type !== 'payment' && f.type !== 'photo').slice(1).map((customField) => (
+                      <FormField
+                        key={customField.id}
+                        control={form.control}
+                        name={customField.id}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-gray-300">
+                              {customField.label}
+                              {customField.required && <span className="text-[#ff6b35] ml-1">*</span>}
+                            </FormLabel>
+                            <FormControl>
+                              {customField.type === "textarea" ? (
+                                <Textarea
+                                  placeholder={customField.placeholder || ""}
+                                  {...field}
+                                  rows={4}
+                                  className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                  data-testid={`input-custom-${customField.id}`}
+                                />
+                              ) : (
+                                <Input
+                                  type={
+                                    customField.type === "email"
+                                      ? "email"
+                                      : customField.type === "phone"
+                                      ? "tel"
+                                      : customField.type === "url"
+                                      ? "url"
+                                      : "text"
+                                  }
+                                  placeholder={customField.placeholder || ""}
+                                  {...field}
+                                  value={field.value || ""}
+                                  className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
+                                  data-testid={`input-custom-${customField.id}`}
+                                />
+                              )}
+                            </FormControl>
+                            {customField.helpText && (
+                              <FormDescription className="text-gray-500">
+                                {customField.helpText}
+                              </FormDescription>
+                            )}
+                            <FormMessage className="text-[#ff6b35]" />
+                          </FormItem>
+                        )}
+                      />
+                    ))}
+
+                    <Button
+                      type="submit"
+                      className="w-full h-12 text-base font-semibold bg-[#ff6b35] hover:bg-[#ff5722] text-white border-0"
+                      disabled={mutation.isPending}
+                      data-testid="button-submit-registration"
+                    >
+                      {mutation.isPending ? (
+                        <>
+                          <Loader2 className="mr-2 h-5 w-5 animate-spin" />
+                          Submitting...
+                        </>
+                      ) : (
+                        "Complete Registration"
                       )}
-                    />
-                  );
-                })}
-
-                <div className="flex items-center gap-2 text-sm text-muted-foreground pt-4">
-                  <Shield className="h-4 w-4" />
-                  <span>Secure registration • Instant confirmation</span>
-                </div>
-
-                <Button
-                  type="submit"
-                  className="w-full h-12 text-base font-semibold"
-                  disabled={mutation.isPending}
-                  data-testid="button-submit-registration"
-                >
-                  {mutation.isPending ? (
-                    <>
-                      <Loader2 className="mr-2 h-5 w-5 animate-spin" />
-                      Submitting...
-                    </>
-                  ) : (
-                    "Complete Registration"
-                  )}
-                </Button>
-              </form>
-            </Form>
-          </CardContent>
-        </Card>
+                    </Button>
+                  </form>
+                </Form>
+              </CardContent>
+            </Card>
+          </div>
+        </div>
 
         {/* Custom links */}
         {customLinks.length > 0 && (
-          <div className="text-center mt-6 space-y-2">
+          <div className="text-center mt-8 space-y-2">
             {customLinks.map((link: { label: string; url: string }, index: number) => (
               <div key={index}>
                 <a
                   href={link.url}
                   target="_blank"
                   rel="noopener noreferrer"
-                  className={`text-sm inline-flex items-center gap-2 hover:underline ${heroImage ? "text-white/80 hover:text-white" : "text-primary hover:text-primary/80"}`}
+                  className="text-sm inline-flex items-center gap-2 text-[#ff6b35] hover:text-[#ff5722] transition-colors"
                 >
                   <LinkIcon className="w-4 h-4" />
                   {link.label}
@@ -776,8 +784,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
             ))}
           </div>
         )}
-
-        </div>
       </div>
     </div>
   );
