@@ -35,6 +35,9 @@ export default function FormsList({ onFormClick }: FormsListProps) {
 
   const publishMutation = useMutation({
     mutationFn: async (id: number) => {
+      if (!id) {
+        throw new Error("Form ID is required");
+      }
       const response = await apiRequest("POST", `/api/admin/forms/${id}/publish`, {});
       return response.json();
     },
@@ -44,11 +47,22 @@ export default function FormsList({ onFormClick }: FormsListProps) {
         description: "Form is now visible to the public",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/forms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/published-form"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Publish Failed",
+        description: error.message || "Failed to publish form",
+        variant: "destructive",
+      });
     },
   });
 
   const unpublishMutation = useMutation({
     mutationFn: async (id: number) => {
+      if (!id) {
+        throw new Error("Form ID is required");
+      }
       const response = await apiRequest("POST", `/api/admin/forms/${id}/unpublish`, {});
       return response.json();
     },
@@ -58,6 +72,14 @@ export default function FormsList({ onFormClick }: FormsListProps) {
         description: "Form is no longer visible to the public",
       });
       queryClient.invalidateQueries({ queryKey: ["/api/admin/forms"] });
+      queryClient.invalidateQueries({ queryKey: ["/api/published-form"] });
+    },
+    onError: (error: any) => {
+      toast({
+        title: "Unpublish Failed",
+        description: error.message || "Failed to unpublish form",
+        variant: "destructive",
+      });
     },
   });
 
@@ -142,7 +164,7 @@ export default function FormsList({ onFormClick }: FormsListProps) {
       ) : (
         <div className="grid gap-4">
           {forms.map((form) => (
-            <Card key={form.id} data-testid={`form-card-${form.id}`}>
+            <Card key={`form-${form.id}`} data-testid={`form-card-${form.id}`}>
               <CardHeader>
                 <div className="flex items-start justify-between">
                   <div className="space-y-1 flex-1">
@@ -178,8 +200,18 @@ export default function FormsList({ onFormClick }: FormsListProps) {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => unpublishMutation.mutate(form.id)}
-                        disabled={unpublishMutation.isPending}
+                        onClick={() => {
+                          if (form.id) {
+                            unpublishMutation.mutate(form.id);
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "Form ID is missing",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={unpublishMutation.isPending || !form.id}
                         data-testid={`button-unpublish-${form.id}`}
                       >
                         <XCircle className="h-4 w-4" />
@@ -188,8 +220,18 @@ export default function FormsList({ onFormClick }: FormsListProps) {
                       <Button
                         variant="outline"
                         size="icon"
-                        onClick={() => publishMutation.mutate(form.id)}
-                        disabled={publishMutation.isPending}
+                        onClick={() => {
+                          if (form.id) {
+                            publishMutation.mutate(form.id);
+                          } else {
+                            toast({
+                              title: "Error",
+                              description: "Form ID is missing",
+                              variant: "destructive",
+                            });
+                          }
+                        }}
+                        disabled={publishMutation.isPending || !form.id}
                         data-testid={`button-publish-${form.id}`}
                       >
                         <Globe className="h-4 w-4" />
