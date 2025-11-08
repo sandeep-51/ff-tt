@@ -1,61 +1,51 @@
 
-import formData from "form-data";
-import Mailgun from "mailgun.js";
 import type { Registration } from "@shared/schema";
 
-const MAILGUN_API_KEY = process.env.MAILGUN_API_KEY || "";
-const MAILGUN_DOMAIN = process.env.MAILGUN_DOMAIN || "";
+const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || "noreply@event.com";
+const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || "Event Registration";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
-
-// Initialize Mailgun client
-const mailgun = new Mailgun(formData);
-let mg: ReturnType<typeof mailgun.client> | null = null;
-
-// Initialize client if credentials are available
-if (MAILGUN_API_KEY && MAILGUN_DOMAIN) {
-  mg = mailgun.client({
-    username: 'api',
-    key: MAILGUN_API_KEY,
-  });
-}
 
 // Log configuration on startup
 console.log("📧 Email Service Configuration:");
-console.log("- Service: Mailgun");
-console.log("- API Key:", MAILGUN_API_KEY ? "✅ SET (" + MAILGUN_API_KEY.length + " chars)" : "❌ NOT SET");
-console.log("- Domain:", MAILGUN_DOMAIN || "NOT CONFIGURED");
-console.log("- From:", EMAIL_FROM);
+console.log("- Service: Brevo (Sendinblue)");
+console.log("- API Key:", BREVO_API_KEY ? "✅ SET (" + BREVO_API_KEY.length + " chars)" : "❌ NOT SET");
+console.log("- From:", `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`);
 
 export async function sendQRCodeEmail(
   registration: Registration,
   qrCodeDataUrl: string,
   verificationUrl: string
 ): Promise<boolean> {
-  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN || !mg) {
-    console.error("❌ Mailgun credentials not configured. Skipping email send.");
-    console.error("MAILGUN_API_KEY:", MAILGUN_API_KEY ? "SET" : "NOT SET");
-    console.error("MAILGUN_DOMAIN:", MAILGUN_DOMAIN || "NOT SET");
+  if (!BREVO_API_KEY) {
+    console.error("❌ Brevo API key not configured. Skipping email send.");
+    console.error("BREVO_API_KEY:", BREVO_API_KEY ? "SET" : "NOT SET");
     return false;
   }
 
   console.log("📧 Attempting to send email to:", registration.email);
   console.log("Using email config:", {
-    domain: MAILGUN_DOMAIN,
-    from: EMAIL_FROM,
-    service: "Mailgun"
+    from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
+    service: "Brevo"
   });
 
   try {
-    // Convert data URL to buffer for attachment
+    // Convert data URL to base64
     const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
-    const imageBuffer = Buffer.from(base64Data, 'base64');
 
-    const messageData = {
-      from: EMAIL_FROM,
-      to: registration.email,
+    const emailPayload = {
+      sender: {
+        name: EMAIL_FROM_NAME,
+        email: EMAIL_FROM
+      },
+      to: [
+        {
+          email: registration.email,
+          name: registration.name
+        }
+      ],
       subject: `Your Event QR Code - ${registration.id}`,
-      html: `
+      htmlContent: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -142,7 +132,7 @@ export async function sendQRCodeEmail(
               
               <div class="qr-code">
                 <h3>Your QR Code</h3>
-                <img src="cid:qrcode" alt="QR Code" />
+                <img src="${qrCodeDataUrl}" alt="QR Code" />
                 <p style="color: #666; font-size: 14px;">
                   📥 Download the attached QR code image or show it on your phone at the event
                 </p>
@@ -156,7 +146,7 @@ export async function sendQRCodeEmail(
                 <strong>Important:</strong><br>
                 • Please save this email or take a screenshot of the QR code<br>
                 • Show this QR code at the event entrance<br>
-                • Your QR code can be scanned once for entry<br>
+                • Your QR code can be scanned up to ${registration.maxScans} time(s) for entry<br>
                 • Keep your registration ID (${registration.id}) handy
               </div>
             </div>
@@ -169,32 +159,37 @@ export async function sendQRCodeEmail(
         </body>
         </html>
       `,
-      inline: [
-        {
-          filename: `QR-Code-${registration.id}.png`,
-          data: imageBuffer,
-          contentType: 'image/png',
-          cid: 'qrcode'
-        }
-      ],
       attachment: [
         {
-          filename: `QR-Code-${registration.id}.png`,
-          data: imageBuffer,
-          contentType: 'image/png'
+          content: base64Data,
+          name: `QR-Code-${registration.id}.png`,
         }
       ]
     };
 
-    const result = await mg.messages.create(MAILGUN_DOMAIN, messageData);
+    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
+      method: "POST",
+      headers: {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY,
+        "content-type": "application/json"
+      },
+      body: JSON.stringify(emailPayload)
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("❌ Brevo API error:", errorData);
+      return false;
+    }
+
+    const result = await response.json();
     console.log(`✅ QR code email sent successfully to ${registration.email}`);
-    console.log("Message ID:", result.id);
-    console.log("Status:", result.status);
+    console.log("Message ID:", result.messageId);
     return true;
   } catch (error: any) {
     console.error("❌ Error sending QR code email:");
     console.error("Error message:", error.message);
-    console.error("Error details:", error.details || "No additional details");
     console.error("Full error:", error);
     return false;
   }
@@ -202,19 +197,34 @@ export async function sendQRCodeEmail(
 
 // Test email configuration
 export async function testEmailConnection(): Promise<boolean> {
-  if (!MAILGUN_API_KEY || !MAILGUN_DOMAIN || !mg) {
-    console.error("❌ Mailgun credentials not configured");
+  if (!BREVO_API_KEY) {
+    console.error("❌ Brevo API key not configured");
     return false;
   }
 
   try {
-    // Validate domain by getting domain info
-    const domain = await mg.domains.get(MAILGUN_DOMAIN);
-    console.log("✅ Mailgun connection verified successfully");
-    console.log("Domain state:", domain.state);
+    // Test the API key by making a simple account request
+    const response = await fetch("https://api.brevo.com/v3/account", {
+      method: "GET",
+      headers: {
+        "accept": "application/json",
+        "api-key": BREVO_API_KEY
+      }
+    });
+
+    if (!response.ok) {
+      const errorData = await response.json();
+      console.error("❌ Brevo connection failed:", errorData);
+      return false;
+    }
+
+    const accountData = await response.json();
+    console.log("✅ Brevo connection verified successfully");
+    console.log("Account email:", accountData.email);
+    console.log("Plan type:", accountData.plan?.type || "Unknown");
     return true;
   } catch (error: any) {
-    console.error("❌ Mailgun connection failed:");
+    console.error("❌ Brevo connection failed:");
     console.error("Error:", error.message);
     return false;
   }
@@ -222,5 +232,5 @@ export async function testEmailConnection(): Promise<boolean> {
 
 // Verify email configuration
 export function isEmailConfigured(): boolean {
-  return !!(MAILGUN_API_KEY && MAILGUN_DOMAIN);
+  return !!BREVO_API_KEY;
 }
