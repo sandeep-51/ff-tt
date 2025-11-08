@@ -82,6 +82,8 @@ export const baseFieldConfigSchema = z.object({
   memberEmailPlaceholder: z.string().optional(),
   memberPhoneLabel: z.string().optional(),
   memberPhonePlaceholder: z.string().optional(),
+  registrationFee: z.number().optional(),
+  registrationFeeDescription: z.string().optional(),
 });
 
 export type BaseFieldConfig = z.infer<typeof baseFieldConfigSchema>;

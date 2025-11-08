@@ -65,9 +65,15 @@ function PublicFormView() {
   const [isAdmin, setIsAdmin] = useState(false);
   const [checkingAdmin, setCheckingAdmin] = useState(true);
 
-  const { data: publishedForm, isLoading } = useQuery<EventForm | null>({
+  const { data: publishedForm, isLoading, error } = useQuery<EventForm | null>({
     queryKey: ["/api/published-form"],
   });
+
+  useEffect(() => {
+    console.log("PublicFormView - Published form data:", publishedForm);
+    console.log("PublicFormView - Is loading:", isLoading);
+    console.log("PublicFormView - Error:", error);
+  }, [publishedForm, isLoading, error]);
 
   useEffect(() => {
     // Check if user is admin
@@ -96,36 +102,30 @@ function PublicFormView() {
 
   if (!publishedForm) {
     // No published form
-    if (isAdmin) {
-      // Show message to admin
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center space-y-6">
-            <div className="space-y-2">
-              <h1 className="text-3xl font-bold">No Published Form</h1>
-              <p className="text-muted-foreground">
-                There is currently no published registration form. Create and publish a form from the admin dashboard.
-              </p>
-            </div>
-            <Button onClick={() => window.location.href = "/admin"} data-testid="button-go-to-admin">
-              Go to Admin Dashboard
-            </Button>
-          </div>
-        </div>
-      );
-    } else {
-      // Show nothing to non-admin users
-      return (
-        <div className="min-h-screen bg-background flex items-center justify-center p-6">
-          <div className="max-w-md w-full text-center space-y-4">
-            <h1 className="text-2xl font-bold">No Active Registration</h1>
+    return (
+      <div className="min-h-screen bg-background flex items-center justify-center p-6">
+        <div className="max-w-md w-full text-center space-y-6">
+          <div className="space-y-2">
+            <h1 className="text-3xl font-bold">No Active Registration</h1>
             <p className="text-muted-foreground">
-              There is no registration form available at this time. Please check back later.
+              There is no registration form available at this time.
+              {isAdmin && " Create and publish a form from the admin dashboard."}
             </p>
           </div>
+          <div className="flex flex-col gap-3">
+            {isAdmin ? (
+              <Button onClick={() => window.location.href = "/admin"} data-testid="button-go-to-admin">
+                Go to Admin Dashboard
+              </Button>
+            ) : (
+              <Button onClick={() => window.location.href = "/admin"} variant="outline" data-testid="button-admin-login">
+                Admin Login
+              </Button>
+            )}
+          </div>
         </div>
-      );
-    }
+      </div>
+    );
   }
 
   return <RegistrationForm publishedForm={publishedForm} />;

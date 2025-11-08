@@ -18,6 +18,7 @@ import { Input } from "@/components/ui/input";
 import { Textarea } from "@/components/ui/textarea";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
+import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { CheckCircle2, Shield, Users, Loader2, Link as LinkIcon, Upload as UploadIcon, Plus, Trash2, DollarSign, AlertCircle } from "lucide-react";
 import { useToast } from "@/hooks/use-toast";
@@ -142,13 +143,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   if (baseFields.organization?.enabled) defaultValues.organization = "";
   if (baseFields.groupSize?.enabled) defaultValues.groupSize = "1";
 
-  // Initialize team members array based on maxTeamMembers configuration
-  const initialMaxMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
-  defaultValues.teamMembers = Array.from({ length: initialMaxMembers }, () => ({ 
+  // Initialize team members array with 1 member by default
+  defaultValues.teamMembers = [{ 
     name: "", 
     email: "", 
     phone: "" 
-  }));
+  }];
 
   customFields.forEach((field) => {
     defaultValues[field.id] = "";
@@ -160,11 +160,29 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   });
 
   const maxTeamMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
+  const [selectedMemberCount, setSelectedMemberCount] = useState(1);
 
   const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({
     control: form.control,
     name: "teamMembers",
   });
+
+  const handleMemberCountChange = (count: string) => {
+    const newCount = parseInt(count);
+    setSelectedMemberCount(newCount);
+    
+    const currentCount = teamMemberFields.length;
+    
+    if (newCount > currentCount) {
+      for (let i = currentCount; i < newCount; i++) {
+        appendTeamMember({ name: "", email: "", phone: "" });
+      }
+    } else if (newCount < currentCount) {
+      for (let i = currentCount - 1; i >= newCount; i--) {
+        removeTeamMember(i);
+      }
+    }
+  };
 
   const uploadPhotoMutation = useMutation({
     mutationFn: async (file: File) => {
@@ -376,9 +394,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                 <CardTitle className="text-[#ff6b35] text-lg">REGISTRATION FEE</CardTitle>
               </CardHeader>
               <CardContent>
-                <div className="text-5xl font-bold text-white mb-4">₹99 <span className="text-xl text-gray-400">/ slot</span></div>
+                <div className="text-5xl font-bold text-white mb-4">
+                  ₹{baseFields.teamMembers?.registrationFee || 99} <span className="text-xl text-gray-400">/ slot</span>
+                </div>
                 <p className="text-sm text-gray-400">
-                  You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad.
+                  {baseFields.teamMembers?.registrationFeeDescription || "You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad."}
                 </p>
               </CardContent>
             </Card>
@@ -390,7 +410,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
               </CardHeader>
               <CardContent className="space-y-3">
                 <div className="text-sm text-gray-300">
-                  <span className="text-white font-semibold">1.</span> Pay ₹99 to the UPI ID below.
+                  <span className="text-white font-semibold">1.</span> Pay ₹{baseFields.teamMembers?.registrationFee || 99} to the UPI ID below.
                 </div>
                 <div className="text-sm text-gray-300">
                   <span className="text-white font-semibold">2.</span> Take a clear screenshot of the success screen.
@@ -419,9 +439,37 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
           {/* Right Column - Registration Form */}
           <div className="lg:col-span-2">
+            {/* Payment Button - Only show if payment field exists */}
+            {paymentField && paymentField.paymentUrl && (
+              <Card className="bg-gradient-to-r from-[#ff6b35] to-[#ff5722] border-0 mb-6">
+                <CardContent className="pt-6">
+                  <div className="flex items-center justify-between">
+                    <div>
+                      <h3 className="text-white font-bold text-xl mb-2">Step 1: Complete Payment</h3>
+                      <p className="text-white/90 text-sm">Pay ₹99 registration fee before filling the form</p>
+                    </div>
+                    <Button
+                      onClick={() => window.open(paymentField.paymentUrl, '_blank')}
+                      className="bg-white text-[#ff6b35] hover:bg-gray-100 font-bold px-8 py-6 text-lg"
+                    >
+                      <DollarSign className="h-5 w-5 mr-2" />
+                      Proceed to Payment
+                    </Button>
+                  </div>
+                </CardContent>
+              </Card>
+            )}
+
             <Card className="bg-[#232835] border-[#2d3548]">
               <CardHeader>
-                <CardTitle className="text-white text-2xl">TEAM REGISTRATION</CardTitle>
+                <CardTitle className="text-white text-2xl">
+                  {paymentField ? 'TEAM REGISTRATION (Step 2)' : 'TEAM REGISTRATION'}
+                </CardTitle>
+                {paymentField && (
+                  <CardDescription className="text-gray-400">
+                    After completing payment, fill in your details and paste the transaction ID below
+                  </CardDescription>
+                )}
               </CardHeader>
               <CardContent>
                 <Form {...form}>
@@ -542,7 +590,23 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           <h3 className="text-[#ff6b35] font-semibold text-lg">
                             {teamMembersConfig.label.toUpperCase()}
                           </h3>
-                          <span className="text-sm text-gray-400">(Optional, Max {maxTeamMembers})</span>
+                          <span className="text-sm text-gray-400">(Required, Max {maxTeamMembers})</span>
+                        </div>
+                        
+                        <div className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
+                          <Label className="text-gray-300 mb-2 block">How many team members?</Label>
+                          <Select value={selectedMemberCount.toString()} onValueChange={handleMemberCountChange}>
+                            <SelectTrigger className="bg-[#232835] border-[#2d3548] text-white">
+                              <SelectValue placeholder="Select number of members" />
+                            </SelectTrigger>
+                            <SelectContent>
+                              {Array.from({ length: maxTeamMembers }, (_, i) => i + 1).map((num) => (
+                                <SelectItem key={num} value={num.toString()}>
+                                  {num} {num === 1 ? 'Member' : 'Members'}
+                                </SelectItem>
+                              ))}
+                            </SelectContent>
+                          </Select>
                         </div>
                         
                         {teamMemberFields.map((field, index) => (

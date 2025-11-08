@@ -1,5 +1,5 @@
 import type { Registration, InsertRegistration } from "@shared/schema";
-import { ticketDb } from "./database";
+import { ticketDb } from "./mongodb";
 
 export interface IStorage {
   createRegistration(data: InsertRegistration): Promise<Registration>;
@@ -128,7 +128,7 @@ export class SqliteStorage implements IStorage {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
         ? r.teamMembers.map(m => `${m.name} (${m.email || 'N/A'})`).join('; ')
         : '';
-      
+
       const baseRow = [
         r.id,
         r.name,
@@ -143,19 +143,19 @@ export class SqliteStorage implements IStorage {
         r.createdAt,
         teamMembersStr
       ];
-      
+
       const customFieldValues = Array.from(allCustomFieldKeys).map(key => {
         return (r.customFieldData && r.customFieldData[key]) || '';
       });
-      
+
       return [...baseRow, ...customFieldValues];
     });
-    
+
     const csvContent = [
       headers.join(','),
       ...rows.map(row => row.map(cell => `"${String(cell).replace(/"/g, '""')}"`).join(','))
     ].join('\n');
-    
+
     return csvContent;
   }
 
@@ -198,14 +198,14 @@ export class SqliteStorage implements IStorage {
         doc.text(`   Phone: ${reg.phone}`);
         doc.text(`   Organization: ${reg.organization}`);
         doc.text(`   Group Size: ${reg.groupSize} | Scans: ${reg.scans}/${reg.maxScans} | Status: ${reg.status}`);
-        
+
         if (reg.teamMembers && reg.teamMembers.length > 0) {
           doc.text(`   Team Members:`);
           reg.teamMembers.forEach((member, idx) => {
             doc.text(`     ${idx + 1}. ${member.name}${member.email ? ` (${member.email})` : ''}${member.phone ? ` - ${member.phone}` : ''}`);
           });
         }
-        
+
         if (reg.customFieldData && Object.keys(reg.customFieldData).length > 0) {
           Object.entries(reg.customFieldData).forEach(([key, value]) => {
             const displayValue = String(value).startsWith('/attached_assets/') 
@@ -222,12 +222,12 @@ export class SqliteStorage implements IStorage {
 
   exportToExcel(registrations: Registration[]): Buffer {
     const XLSX = require('xlsx');
-    
+
     const rows = registrations.map((r) => {
       const teamMembersStr = r.teamMembers && r.teamMembers.length > 0
         ? r.teamMembers.map(m => `${m.name}${m.email ? ` (${m.email})` : ''}${m.phone ? ` - ${m.phone}` : ''}`).join('; ')
         : '';
-      
+
       const row: any = {
         ID: r.id,
         Name: r.name,
@@ -242,13 +242,13 @@ export class SqliteStorage implements IStorage {
         'Created At': r.createdAt,
         'Team Members': teamMembersStr,
       };
-      
+
       if (r.customFieldData && Object.keys(r.customFieldData).length > 0) {
         Object.entries(r.customFieldData).forEach(([key, value]) => {
           row[key] = value;
         });
       }
-      
+
       return row;
     });
 
@@ -260,4 +260,4 @@ export class SqliteStorage implements IStorage {
   }
 }
 
-export const storage = new SqliteStorage();
+export const storage = ticketDb;

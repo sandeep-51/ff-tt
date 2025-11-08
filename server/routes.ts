@@ -131,9 +131,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // GET /api/published-form - Get published form (public)
   app.get("/api/published-form", async (req, res) => {
     try {
+      console.log("📋 Fetching published form...");
       const form = await storage.getPublishedForm();
+      console.log("📋 Published form result:", form ? `Found form ID ${form.id}` : "No published form");
       res.json(form);
     } catch (error: any) {
+      console.error("❌ Error fetching published form:", error);
       res.status(500).json({ error: error.message || "Failed to fetch published form" });
     }
   });

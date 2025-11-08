@@ -810,6 +810,61 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
 
           <Card>
             <CardHeader>
+              <CardTitle>Registration Fee</CardTitle>
+              <CardDescription>Configure the registration fee amount and description</CardDescription>
+            </CardHeader>
+            <CardContent className="space-y-4">
+              <FormField
+                control={form.control}
+                name="baseFields.teamMembers.registrationFee"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fee Amount (₹)</FormLabel>
+                    <FormControl>
+                      <Input
+                        type="number"
+                        placeholder="99"
+                        {...field}
+                        onChange={(e) => field.onChange(parseFloat(e.target.value) || 0)}
+                        value={field.value || 99}
+                        data-testid="input-registration-fee"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      The registration fee per slot (default: ₹99)
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="baseFields.teamMembers.registrationFeeDescription"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel>Fee Description</FormLabel>
+                    <FormControl>
+                      <Textarea
+                        placeholder="You are buying ONE slot. The fee is fixed at ₹99 whether you play Solo, Duo, Trio, or Full Squad."
+                        {...field}
+                        value={field.value || ""}
+                        rows={3}
+                        data-testid="textarea-fee-description"
+                      />
+                    </FormControl>
+                    <FormDescription>
+                      Additional information about the registration fee
+                    </FormDescription>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+            </CardContent>
+          </Card>
+
+          <Card>
+            <CardHeader>
               <CardTitle>Images</CardTitle>
               <CardDescription>Upload hero image, watermark, and logo</CardDescription>
             </CardHeader>
