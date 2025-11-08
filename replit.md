@@ -116,8 +116,10 @@ Preferred communication style: Simple, everyday language.
 - **CSV Export**: `csv-stringify` for data export functionality
 - **HTML5 QR Scanner**: `html5-qrcode` for camera-based QR code scanning in browser
 - **Database**: `mongodb` driver for MongoDB cloud database
+- **Email Service**: `mailgun.js` for sending transactional emails with QR code attachments
 
 **External Services**:
+- **Mailgun**: Transactional email delivery service for sending QR codes to registered attendees
 - Google Fonts CDN for Inter and JetBrains Mono fonts
 - No cloud storage - files stored locally in `attached_assets/uploads/`
 
@@ -133,6 +135,9 @@ Preferred communication style: Simple, everyday language.
 - `SITE_URL` - Base URL for QR code generation (default: http://localhost:5000)
 - `SESSION_SECRET` - Session encryption secret (default: event-registration-secret)
 - `NODE_ENV` - Environment mode (development/production)
+- `MAILGUN_API_KEY` - Mailgun API key for sending emails (required for email functionality)
+- `MAILGUN_DOMAIN` - Mailgun domain for sending emails (required for email functionality)
+- `EMAIL_FROM` - Sender email address for outgoing emails (default: noreply@event.com)
 
 **Asset Management**:
 - Uploaded files stored in `attached_assets/uploads/` directory
