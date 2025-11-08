@@ -657,7 +657,6 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                   </CardContent>
                 </Card>
                 )}
-</new_str>
 
                 {customFields.map((customField) => {
                   return (
