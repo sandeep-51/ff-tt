@@ -1,4 +1,3 @@
-
 import { useState, useMemo } from "react";
 import { useForm, useFieldArray } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
@@ -60,32 +59,40 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
   // Add team members schema based on configuration
   if (baseFields?.teamMembers?.enabled) {
     const teamMemberFieldsSchema: Record<string, z.ZodTypeAny> = {};
-    
+
     // Member Name Field
     const memberNameConfig = baseFields.teamMembers.memberNameConfig;
     if (memberNameConfig?.enabled !== false) {
       const nameSchema = z.string().min(1, "Member name is required");
-      teamMemberFieldsSchema.name = memberNameConfig?.required !== false ? nameSchema : z.string().optional().or(z.literal(""));
+      teamMemberFieldsSchema.name = memberNameConfig?.required !== false
+        ? nameSchema
+        : z.string().optional().or(z.literal(""));
     }
-    
+
     // Member Email Field
     const memberEmailConfig = baseFields.teamMembers.memberEmailConfig;
     if (memberEmailConfig?.enabled !== false) {
-      const emailSchema = z.string().min(1, "Email is required").email("Invalid email");
-      teamMemberFieldsSchema.email = memberEmailConfig?.required !== false ? emailSchema : z.string().optional().or(z.literal(""));
+      const emailSchema = z.string().email("Invalid email").optional().or(z.literal(""));
+      const requiredEmailSchema = z.string().min(1, "Email is required").email("Invalid email");
+      teamMemberFieldsSchema.email = memberEmailConfig?.required !== false
+        ? requiredEmailSchema
+        : emailSchema;
     }
-    
+
     // Member Phone Field
     const memberPhoneConfig = baseFields.teamMembers.memberPhoneConfig;
     if (memberPhoneConfig?.enabled !== false) {
-      const phoneSchema = z.string().min(1, "Phone is required").min(10, "Phone number is required (minimum 10 digits)");
-      teamMemberFieldsSchema.phone = memberPhoneConfig?.required !== false ? phoneSchema : z.string().optional().or(z.literal(""));
+      const phoneSchema = z.string().min(10, "Phone number must be at least 10 digits").optional().or(z.literal(""));
+      const requiredPhoneSchema = z.string().min(1, "Phone is required").min(10, "Phone number must be at least 10 digits");
+      teamMemberFieldsSchema.phone = memberPhoneConfig?.required !== false
+        ? requiredPhoneSchema
+        : phoneSchema;
     }
-    
+
     // Add custom team member fields
     (teamMemberFields || []).forEach((field) => {
       let fieldSchema: z.ZodTypeAny;
-      
+
       switch (field.type) {
         case "email":
           fieldSchema = z.string().min(1, "Email is required").email("Invalid email address");
@@ -102,10 +109,10 @@ const buildDynamicSchema = (customFields: CustomField[] = [], baseFields?: Event
         default:
           fieldSchema = z.string().min(1, `${field.label} is required`);
       }
-      
+
       teamMemberFieldsSchema[field.id] = field.required ? fieldSchema : z.string().optional().or(z.literal(""));
     });
-    
+
     baseSchema.teamMembers = z.array(z.object(teamMemberFieldsSchema)).min(1, "At least one team member is required");
   }
 
@@ -191,28 +198,28 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
 
   // Initialize team members array with 1 member by default
   const teamMemberDefaults: any = {};
-  
+
   // Add base fields to defaults
   const memberNameConfig = teamMembersConfig.memberNameConfig;
   if (memberNameConfig?.enabled !== false) {
     teamMemberDefaults.name = "";
   }
-  
+
   const memberEmailConfig = teamMembersConfig.memberEmailConfig;
   if (memberEmailConfig?.enabled !== false) {
     teamMemberDefaults.email = "";
   }
-  
+
   const memberPhoneConfig = teamMembersConfig.memberPhoneConfig;
   if (memberPhoneConfig?.enabled !== false) {
     teamMemberDefaults.phone = "";
   }
-  
+
   // Add custom fields to defaults
   teamMemberCustomFields.forEach((field) => {
     teamMemberDefaults[field.id] = "";
   });
-  
+
   defaultValues.teamMembers = [teamMemberDefaults];
 
   customFields.forEach((field) => {
@@ -235,9 +242,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const handleMemberCountChange = (count: string) => {
     const newCount = parseInt(count);
     setSelectedMemberCount(newCount);
-    
+
     const currentCount = teamMemberFields.length;
-    
+
     if (newCount > currentCount) {
       for (let i = currentCount; i < newCount; i++) {
         appendTeamMember({ name: "", email: "", phone: "" });
@@ -281,7 +288,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
   const mutation = useMutation({
     mutationFn: async (data: any) => {
       console.log("📝 Form data being submitted:", data);
-      
+
       const customFieldData: Record<string, string> = {};
       customFields.forEach((field) => {
         if (data[field.id]) {
@@ -551,7 +558,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                     {/* Squad Leader Section */}
                     <div className="space-y-4">
                       <h3 className="text-[#ff6b35] font-semibold text-lg">SQUAD LEADER (YOU)</h3>
-                      
+
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                         {baseFields.name?.enabled && (
                           <FormField
@@ -564,11 +571,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                   {baseFields.name.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    placeholder={baseFields.name.placeholder || "Enter your name"} 
-                                    {...field} 
+                                  <Input
+                                    placeholder={baseFields.name.placeholder || "Enter your name"}
+                                    {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                    data-testid="input-name" 
+                                    data-testid="input-name"
                                   />
                                 </FormControl>
                                 <FormMessage className="text-[#ff6b35]" />
@@ -616,12 +623,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                   {baseFields.phone.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="tel" 
-                                    placeholder={baseFields.phone.placeholder || "10-digit mobile number"} 
-                                    {...field} 
+                                  <Input
+                                    type="tel"
+                                    placeholder={baseFields.phone.placeholder || "10-digit mobile number"}
+                                    {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                    data-testid="input-phone" 
+                                    data-testid="input-phone"
                                   />
                                 </FormControl>
                                 <FormMessage className="text-[#ff6b35]" />
@@ -641,12 +648,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                   {baseFields.email.required && <span className="text-[#ff6b35] ml-1">*</span>}
                                 </FormLabel>
                                 <FormControl>
-                                  <Input 
-                                    type="email" 
-                                    placeholder={baseFields.email.placeholder || "valid@email.com"} 
-                                    {...field} 
+                                  <Input
+                                    type="email"
+                                    placeholder={baseFields.email.placeholder || "valid@email.com"}
+                                    {...field}
                                     className="bg-[#1a1d29] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                    data-testid="input-email" 
+                                    data-testid="input-email"
                                   />
                                 </FormControl>
                                 <FormMessage className="text-[#ff6b35]" />
@@ -666,7 +673,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           </h3>
                           <span className="text-sm text-gray-400">(Required, Max {maxTeamMembers})</span>
                         </div>
-                        
+
                         <div className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
                           <Label className="text-gray-300 mb-2 block">How many team members?</Label>
                           <Select value={selectedMemberCount.toString()} onValueChange={handleMemberCountChange}>
@@ -682,23 +689,23 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                             </SelectContent>
                           </Select>
                         </div>
-                        
+
                         {teamMemberFields.map((field, index) => {
                           const memberNameConfig = teamMembersConfig.memberNameConfig;
                           const memberEmailConfig = teamMembersConfig.memberEmailConfig;
                           const memberPhoneConfig = teamMembersConfig.memberPhoneConfig;
-                          
+
                           // Calculate grid columns based on enabled fields
                           const enabledFieldsCount = [
                             memberNameConfig?.enabled !== false,
                             memberEmailConfig?.enabled !== false,
                             memberPhoneConfig?.enabled !== false
                           ].filter(Boolean).length;
-                          
-                          const gridColsClass = enabledFieldsCount === 1 ? 'grid-cols-1' : 
-                                               enabledFieldsCount === 2 ? 'grid-cols-1 md:grid-cols-2' : 
+
+                          const gridColsClass = enabledFieldsCount === 1 ? 'grid-cols-1' :
+                                               enabledFieldsCount === 2 ? 'grid-cols-1 md:grid-cols-2' :
                                                'grid-cols-1 md:grid-cols-3';
-                          
+
                           return (
                             <div key={field.id} className="p-4 bg-[#1a1d29] rounded-lg border border-[#2d3548]">
                               <div className="flex items-center justify-between mb-3">
@@ -716,11 +723,11 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                           {(memberNameConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
                                         </FormLabel>
                                         <FormControl>
-                                          <Input 
-                                            placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} 
-                                            {...field} 
+                                          <Input
+                                            placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"}
+                                            {...field}
                                             className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                            data-testid={`input-member-${index}-name`} 
+                                            data-testid={`input-member-${index}-name`}
                                           />
                                         </FormControl>
                                         <FormMessage className="text-[#ff6b35]" />
@@ -728,7 +735,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                     )}
                                   />
                                 )}
-                                
+
                                 {(memberEmailConfig?.enabled !== false) && (
                                   <FormField
                                     control={form.control}
@@ -740,12 +747,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                           {(memberEmailConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
                                         </FormLabel>
                                         <FormControl>
-                                          <Input 
-                                            type="email" 
-                                            placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} 
-                                            {...field} 
+                                          <Input
+                                            type="email"
+                                            placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"}
+                                            {...field}
                                             className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                            data-testid={`input-member-${index}-email`} 
+                                            data-testid={`input-member-${index}-email`}
                                           />
                                         </FormControl>
                                         <FormMessage className="text-[#ff6b35]" />
@@ -753,7 +760,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                     )}
                                   />
                                 )}
-                                
+
                                 {(memberPhoneConfig?.enabled !== false) && (
                                   <FormField
                                     control={form.control}
@@ -765,12 +772,12 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                           {(memberPhoneConfig?.required !== false) && <span className="text-[#ff6b35] ml-1">*</span>}
                                         </FormLabel>
                                         <FormControl>
-                                          <Input 
-                                            type="tel" 
-                                            placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} 
-                                            {...field} 
+                                          <Input
+                                            type="tel"
+                                            placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"}
+                                            {...field}
                                             className="bg-[#232835] border-[#2d3548] text-white placeholder:text-gray-500 focus:border-[#ff6b35]"
-                                            data-testid={`input-member-${index}-phone`} 
+                                            data-testid={`input-member-${index}-phone`}
                                           />
                                         </FormControl>
                                         <FormMessage className="text-[#ff6b35]" />
@@ -779,7 +786,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                                   />
                                 )}
                               </div>
-                              
+
                               {/* Custom team member fields */}
                               {teamMemberCustomFields.length > 0 && (
                                 <div className="mt-3 space-y-3">
@@ -889,7 +896,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           <AlertCircle className="h-5 w-5 text-[#ff6b35]" />
                           <h3 className="text-[#ff6b35] font-semibold text-lg">PAYMENT VERIFICATION</h3>
                         </div>
-                        
+
                         <FormField
                           control={form.control}
                           name={paymentField.id}

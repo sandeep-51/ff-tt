@@ -510,10 +510,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // POST /api/admin/forms - Create new event form
   app.post("/api/admin/forms", requireAdmin, express.json(), async (req, res) => {
     try {
+      console.log("📝 Creating new form with data:", JSON.stringify(req.body, null, 2));
       const validated = eventFormSchema.parse(req.body);
+      console.log("✅ Validation passed for form creation");
       const form = await storage.createEventForm(validated);
+      console.log("✅ Form created successfully:", form.id);
       res.json({ success: true, form });
     } catch (error: any) {
+      console.error("❌ Form creation error:", error);
+      if (error.name === 'ZodError') {
+        console.error("❌ Validation errors:", JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
       res.status(400).json({ error: error.message || "Invalid form data" });
     }
   });
@@ -546,16 +557,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.put("/api/admin/forms/:id", requireAdmin, express.json(), async (req, res) => {
     try {
       const id = parseInt(req.params.id);
+      console.log(`📝 Updating form ${id} with data:`, JSON.stringify(req.body, null, 2));
       const validated = eventFormSchema.parse(req.body);
+      console.log("✅ Validation passed for form update");
       const success = await storage.updateEventForm(id, validated);
       
       if (success) {
         const updated = await storage.getEventForm(id);
+        console.log(`✅ Form ${id} updated successfully`);
         res.json({ success: true, form: updated });
       } else {
+        console.error(`❌ Failed to update form ${id}`);
         res.status(500).json({ error: "Failed to update form" });
       }
     } catch (error: any) {
+      console.error(`❌ Form update error for ID ${req.params.id}:`, error);
+      if (error.name === 'ZodError') {
+        console.error("❌ Validation errors:", JSON.stringify(error.errors, null, 2));
+        return res.status(400).json({ 
+          error: "Validation failed", 
+          details: error.errors 
+        });
+      }
       res.status(400).json({ error: error.message || "Invalid form data" });
     }
   });

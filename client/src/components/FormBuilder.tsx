@@ -354,11 +354,15 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
   };
 
   const handleSubmit = (data: FormBuilderData) => {
+    console.log("Form submission started with data:", data);
+    console.log("Form errors:", form.formState.errors);
+
     // Validate payment fields have payment URLs
     const paymentFields = data.customFields?.filter(f => f.type === 'payment') || [];
     const invalidPaymentFields = paymentFields.filter(f => !(f as any).paymentUrl || (f as any).paymentUrl.trim() === '');
 
     if (invalidPaymentFields.length > 0) {
+      console.error("Payment field validation failed:", invalidPaymentFields);
       toast({
         title: "Validation Error",
         description: "All payment fields must have a payment link URL. Please fill in the payment URL for all payment fields.",
@@ -388,7 +392,8 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
       })),
     };
 
-    saveMutation.mutate(payload as any); // Type assertion here as the payload is slightly different
+    console.log("Submitting payload:", payload);
+    saveMutation.mutate(payload as any);
   };
 
   const handlePublish = () => {
