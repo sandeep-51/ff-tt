@@ -118,6 +118,20 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
     groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
   };
+  const teamMembersConfig = publishedForm?.baseFields?.teamMembers || {
+    enabled: true,
+    label: "Team Members",
+    placeholder: "Select number of team members and fill in their details",
+    required: true,
+    helpText: "",
+    memberNameLabel: "Full Name",
+    memberNamePlaceholder: "Enter member name",
+    memberEmailLabel: "Email",
+    memberEmailPlaceholder: "member@example.com",
+    memberPhoneLabel: "Phone Number",
+    memberPhonePlaceholder: "+1 (555) 123-4567",
+  };
+
 
   const registrationSchema = useMemo(() => buildDynamicSchema(customFields, baseFields), [customFields, baseFields]);
   type RegistrationFormData = z.infer<typeof registrationSchema>;
@@ -526,13 +540,23 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                   />
                 )}
 
-                <Card className="border-2 border-primary/20 bg-primary/5">
+                {/* Team Members Section */}
+                {teamMembersConfig.enabled && (
+                <Card className="border-2 border-primary/20">
                   <CardHeader>
-                    <CardTitle className="text-lg flex items-center gap-2">
+                    <CardTitle className="flex items-center gap-2">
                       <Users className="h-5 w-5" />
-                      Team Members *
+                      {teamMembersConfig.label}
+                      {teamMembersConfig.required && <span className="text-destructive">*</span>}
                     </CardTitle>
-                    <CardDescription>Select number of team members and fill in their details</CardDescription>
+                    <CardDescription>
+                      {teamMembersConfig.placeholder}
+                    </CardDescription>
+                    {teamMembersConfig.helpText && (
+                      <p className="text-sm text-muted-foreground mt-2">
+                        {teamMembersConfig.helpText}
+                      </p>
+                    )}
                   </CardHeader>
                   <CardContent className="space-y-4">
                     {/* Member Count Selector */}
@@ -594,9 +618,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           name={`teamMembers.${index}.name`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Full Name *</FormLabel>
+                              <FormLabel>{teamMembersConfig.memberNameLabel || "Full Name"} *</FormLabel>
                               <FormControl>
-                                <Input placeholder="Enter member name" {...field} />
+                                <Input placeholder={teamMembersConfig.memberNamePlaceholder || "Enter member name"} {...field} data-testid={`input-member-${index}-name`} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -607,9 +631,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           name={`teamMembers.${index}.email`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Email *</FormLabel>
+                              <FormLabel>{teamMembersConfig.memberEmailLabel || "Email"}</FormLabel>
                               <FormControl>
-                                <Input type="email" placeholder="member@example.com" {...field} />
+                                <Input type="email" placeholder={teamMembersConfig.memberEmailPlaceholder || "member@example.com"} {...field} data-testid={`input-member-${index}-email`} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -620,9 +644,9 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                           name={`teamMembers.${index}.phone`}
                           render={({ field }) => (
                             <FormItem>
-                              <FormLabel>Phone Number *</FormLabel>
+                              <FormLabel>{teamMembersConfig.memberPhoneLabel || "Phone Number"}</FormLabel>
                               <FormControl>
-                                <Input type="tel" placeholder="+1 (555) 123-4567" {...field} />
+                                <Input type="tel" placeholder={teamMembersConfig.memberPhonePlaceholder || "+1 (555) 123-4567"} {...field} data-testid={`input-member-${index}-phone`} />
                               </FormControl>
                               <FormMessage />
                             </FormItem>
@@ -632,6 +656,8 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
                     ))}
                   </CardContent>
                 </Card>
+                )}
+</new_str>
 
                 {customFields.map((customField) => {
                   return (

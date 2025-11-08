@@ -100,6 +100,19 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
         phone: { label: "Phone Number", placeholder: "+1 (555) 123-4567", required: true, enabled: true },
         organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
         groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
+        teamMembers: { 
+          label: "Team Members", 
+          placeholder: "Select number of team members and fill in their details", 
+          required: true, 
+          enabled: true,
+          maxTeamMembers: 4,
+          memberNameLabel: "Full Name",
+          memberNamePlaceholder: "Enter member name",
+          memberEmailLabel: "Email",
+          memberEmailPlaceholder: "member@example.com",
+          memberPhoneLabel: "Phone Number",
+          memberPhonePlaceholder: "+1 (555) 123-4567"
+        },
       },
       successTitle: "",
       successMessage: "",
@@ -120,6 +133,19 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
         phone: { label: "Phone Number", placeholder: "+1 (555) 123-4567", required: true, enabled: true },
         organization: { label: "Organization", placeholder: "Acme Corporation", required: true, enabled: true },
         groupSize: { label: "Group Size (Maximum 4 people)", placeholder: "", required: true, enabled: true },
+        teamMembers: { 
+          label: "Team Members", 
+          placeholder: "Select number of team members and fill in their details", 
+          required: true, 
+          enabled: true,
+          maxTeamMembers: 4,
+          memberNameLabel: "Full Name",
+          memberNamePlaceholder: "Enter member name",
+          memberEmailLabel: "Email",
+          memberEmailPlaceholder: "member@example.com",
+          memberPhoneLabel: "Phone Number",
+          memberPhonePlaceholder: "+1 (555) 123-4567"
+        },
       },
       successTitle: existingForm.successTitle || undefined,
       successMessage: existingForm.successMessage || undefined,
@@ -580,39 +606,204 @@ export default function FormBuilder({ formId, onSuccess }: FormBuilderProps) {
               ))}
 
               {/* Team Members Configuration */}
-              <Card className="border-2 border-primary/20">
-                <CardHeader>
-                  <CardTitle className="text-base">Team Members Configuration</CardTitle>
-                  <CardDescription>Configure how many team members can register together</CardDescription>
-                </CardHeader>
-                <CardContent>
+              <div className="p-4 border rounded-md space-y-3">
+                <div className="flex items-center justify-between mb-2">
+                  <h4 className="font-medium">Team Members</h4>
                   <FormField
                     control={form.control}
-                    name="baseFields.groupSize.maxTeamMembers"
+                    name="baseFields.teamMembers.enabled"
                     render={({ field }) => (
-                      <FormItem>
-                        <FormLabel>Maximum Team Members Allowed</FormLabel>
+                      <FormItem className="flex items-center gap-2 space-y-0">
+                        <FormLabel className="text-sm">Enabled</FormLabel>
                         <FormControl>
-                          <Input
-                            type="number"
-                            min="1"
-                            max="20"
-                            placeholder="Enter max team members (1-20)"
-                            {...field}
-                            onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                            value={field.value || 4}
-                            data-testid="input-max-team-members"
+                          <Checkbox
+                            checked={field.value}
+                            onCheckedChange={field.onChange}
+                            data-testid="checkbox-field-teamMembers-enabled"
                           />
                         </FormControl>
-                        <FormDescription>
-                          Users will be able to add up to this many team members (default: 4)
-                        </FormDescription>
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <div className="grid grid-cols-2 gap-3">
+                  <FormField
+                    control={form.control}
+                    name="baseFields.teamMembers.label"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Section Label</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Team Members" {...field} data-testid="input-field-teamMembers-label" />
+                        </FormControl>
                         <FormMessage />
                       </FormItem>
                     )}
                   />
-                </CardContent>
-              </Card>
+                  <FormField
+                    control={form.control}
+                    name="baseFields.teamMembers.placeholder"
+                    render={({ field }) => (
+                      <FormItem>
+                        <FormLabel className="text-sm">Description</FormLabel>
+                        <FormControl>
+                          <Input placeholder="Select number of team members and fill in their details" {...field} value={field.value || ""} data-testid="input-field-teamMembers-placeholder" />
+                        </FormControl>
+                        <FormMessage />
+                      </FormItem>
+                    )}
+                  />
+                </div>
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.helpText"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Help Text / Instructions</FormLabel>
+                      <FormControl>
+                        <Textarea 
+                          placeholder="Add helpful instructions for team member registration..." 
+                          {...field} 
+                          value={field.value || ""} 
+                          rows={2}
+                          data-testid="textarea-field-teamMembers-help" 
+                        />
+                      </FormControl>
+                      <FormDescription>This note will be shown to guide users</FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.maxTeamMembers"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Maximum Team Members Allowed</FormLabel>
+                      <FormControl>
+                        <Input
+                          type="number"
+                          min="1"
+                          max="20"
+                          placeholder="Enter max team members (1-20)"
+                          {...field}
+                          onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                          value={field.value || 4}
+                          data-testid="input-max-team-members"
+                        />
+                      </FormControl>
+                      <FormDescription>
+                        Users will be able to add up to this many team members (default: 4)
+                      </FormDescription>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberNameLabel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Name Field Label</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Full Name" {...field} value={field.value || ""} data-testid="input-field-teamMembers-nameLabel" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberNamePlaceholder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Name Field Placeholder</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Enter member name" {...field} value={field.value || ""} data-testid="input-field-teamMembers-namePlaceholder" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberEmailLabel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Email Field Label</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Email" {...field} value={field.value || ""} data-testid="input-field-teamMembers-emailLabel" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberEmailPlaceholder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Email Field Placeholder</FormLabel>
+                      <FormControl>
+                        <Input placeholder="member@example.com" {...field} value={field.value || ""} data-testid="input-field-teamMembers-emailPlaceholder" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberPhoneLabel"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Phone Field Label</FormLabel>
+                      <FormControl>
+                        <Input placeholder="Phone Number" {...field} value={field.value || ""} data-testid="input-field-teamMembers-phoneLabel" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.memberPhonePlaceholder"
+                  render={({ field }) => (
+                    <FormItem>
+                      <FormLabel className="text-sm">Member Phone Field Placeholder</FormLabel>
+                      <FormControl>
+                        <Input placeholder="+1 (555) 123-4567" {...field} value={field.value || ""} data-testid="input-field-teamMembers-phonePlaceholder" />
+                      </FormControl>
+                      <FormMessage />
+                    </FormItem>
+                  )}
+                />
+
+                <FormField
+                  control={form.control}
+                  name="baseFields.teamMembers.required"
+                  render={({ field }) => (
+                    <FormItem className="flex items-center gap-2 space-y-0">
+                      <FormControl>
+                        <Checkbox
+                          checked={field.value}
+                          onCheckedChange={field.onChange}
+                          data-testid="checkbox-field-teamMembers-required"
+                        />
+                      </FormControl>
+                      <FormLabel className="text-sm">Required</FormLabel>
+                    </FormItem>
+                  )}
+                />
+              </div>
             </CardContent>
           </Card>
 

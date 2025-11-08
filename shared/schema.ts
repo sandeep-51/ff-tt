@@ -76,6 +76,12 @@ export const baseFieldConfigSchema = z.object({
   enabled: z.boolean().default(true),
   maxTeamMembers: z.number().min(1).max(20).optional(),
   helpText: z.string().optional(),
+  memberNameLabel: z.string().optional(),
+  memberNamePlaceholder: z.string().optional(),
+  memberEmailLabel: z.string().optional(),
+  memberEmailPlaceholder: z.string().optional(),
+  memberPhoneLabel: z.string().optional(),
+  memberPhonePlaceholder: z.string().optional(),
 });
 
 export type BaseFieldConfig = z.infer<typeof baseFieldConfigSchema>;
@@ -100,6 +106,7 @@ export const eventFormSchema = z.object({
     phone: baseFieldConfigSchema.optional(),
     organization: baseFieldConfigSchema.optional(),
     groupSize: baseFieldConfigSchema.optional(),
+    teamMembers: baseFieldConfigSchema.optional(),
   }).optional(),
   successMessage: z.string().optional(),
   successTitle: z.string().optional(),
