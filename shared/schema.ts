@@ -36,6 +36,7 @@ export interface Registration {
   qrCodeData: string | null;
   status: "pending" | "active" | "checked-in" | "exhausted" | "invalid";
   createdAt: string;
+  formId: number | null;
   customFieldData: Record<string, string>;
   teamMembers?: TeamMember[];
 }
