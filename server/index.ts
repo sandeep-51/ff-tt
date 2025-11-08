@@ -2,7 +2,7 @@ import "dotenv/config";
 import express, { type Request, Response, NextFunction } from "express";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
-import { seedDefaultForm } from "./mongodb";
+import { seedDefaultForm, cleanupInvalidForms } from "./mongodb";
 
 const app = express();
 
@@ -49,6 +49,9 @@ app.use((req, res, next) => {
 });
 
 (async () => {
+  // Clean up invalid forms from database
+  await cleanupInvalidForms();
+  
   // Seed default form if none exists
   await seedDefaultForm();
 

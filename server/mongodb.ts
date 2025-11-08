@@ -16,10 +16,10 @@ async function connectToDatabase() {
   if (!client) {
     try {
       console.log("🔄 Connecting to MongoDB...");
-      console.log("📍 URI:", MONGODB_URI.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@')); // Hide password in logs
+      console.log("📍 URI:", MONGODB_URI!.replace(/\/\/([^:]+):([^@]+)@/, '//$1:****@')); // Hide password in logs
       console.log("📦 Database:", DATABASE_NAME);
 
-      client = new MongoClient(MONGODB_URI);
+      client = new MongoClient(MONGODB_URI!);
       await client.connect();
       db = client.db(DATABASE_NAME);
 
@@ -587,6 +587,29 @@ export class TicketDatabase {
 }
 
 export const ticketDb = new TicketDatabase();
+
+// Migration: Clean up forms without proper numeric IDs
+export async function cleanupInvalidForms() {
+  try {
+    await connectToDatabase(); // Ensure DB is connected
+    const formsCollection = db.collection('event_forms');
+
+    // Delete forms that don't have a numeric id field
+    const result = await formsCollection.deleteMany({
+      $or: [
+        { id: { $exists: false } },
+        { id: { $type: "string" } },
+        { id: null }
+      ]
+    });
+
+    if (result.deletedCount > 0) {
+      console.log(`🧹 Cleaned up ${result.deletedCount} invalid form(s)`);
+    }
+  } catch (error) {
+    console.error("❌ Error cleaning up invalid forms:", error);
+  }
+}
 
 // Seed a default tournament form with photo upload
 export async function seedDefaultForm() {
