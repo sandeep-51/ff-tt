@@ -16,19 +16,24 @@ The app requires the following environment variables. Copy `.env.example` to `.e
 ### Required Variables
 
 ```env
-# MongoDB Configuration
+# MongoDB Configuration (REQUIRED)
 MONGODB_URI=mongodb+srv://username:password@cluster.mongodb.net/?appName=YourAppName
 DATABASE_NAME=event_registration
 
-# Admin Password
+# Admin Password (REQUIRED)
 ADMIN_PASS=your_secure_password
 
-# Site URL (your deployed URL)
+# Site URL (REQUIRED - your deployed URL)
 SITE_URL=https://yourdomain.com
 
-# Session Secret (generate a random string)
+# Session Secret (REQUIRED - generate a random string)
 SESSION_SECRET=your_random_secret_key
+
+# Node Environment (REQUIRED for production)
+NODE_ENV=production
 ```
+
+**IMPORTANT**: Make sure `NODE_ENV=production` is set in your deployment platform for proper session cookie handling!
 
 ### Optional Variables (for email functionality)
 
@@ -111,10 +116,21 @@ After deployment:
 - Ensure your MongoDB cluster allows connections from your hosting platform
 - Verify database user credentials
 
-### Session/Login Issues
-- Make sure `SESSION_SECRET` is set
-- For production, ensure `NODE_ENV=production`
+### Session/Login Issues (COMMON IN PRODUCTION)
+- **CRITICAL**: Make sure `NODE_ENV=production` is set in your deployment environment
+- Make sure `SESSION_SECRET` is set to a strong random value
+- Ensure your deployment platform supports sessions/cookies
+- For Replit: Sessions work automatically
+- For Vercel/Netlify: You may need to use serverless-compatible session storage
 - Clear browser cookies and try again
+- Check browser console for CORS or cookie errors
+
+### Forms Not Saving / 401 Unauthorized Errors
+- This is usually a session cookie issue in production
+- Verify `NODE_ENV=production` is set
+- Verify `SESSION_SECRET` is configured
+- Check that your hosting platform supports Express sessions
+- The app requires cookies to be enabled in the browser
 
 ### Email Not Sending
 - Verify Gmail App Password is correct

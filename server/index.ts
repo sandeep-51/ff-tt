@@ -52,8 +52,9 @@ app.use((req, res, next) => {
   // Clean up invalid forms from database
   await cleanupInvalidForms();
   
-  // Seed default form if none exists
-  await seedDefaultForm();
+  // NOTE: Default form seeding is disabled
+  // Uncomment the line below to seed a default form on startup
+  // await seedDefaultForm();
 
   const server = await registerRoutes(app);
 

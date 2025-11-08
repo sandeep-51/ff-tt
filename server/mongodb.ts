@@ -617,10 +617,12 @@ export async function seedDefaultForm() {
     await connectToDatabase(); // Ensure DB is connected
     const formsCollection = db.collection('event_forms');
 
-    // Check if any form exists
-    const existingForm = await formsCollection.findOne({});
+    // Check if any form with a valid numeric ID exists
+    const existingForm = await formsCollection.findOne({ 
+      id: { $exists: true, $type: "number" } 
+    });
     if (existingForm) {
-      console.log("📋 Form already exists, skipping seed");
+      console.log("📋 Form with valid ID already exists, skipping seed");
       return;
     }
 

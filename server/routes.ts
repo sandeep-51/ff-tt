@@ -54,18 +54,23 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Trust proxy - required for secure cookies behind reverse proxies (Replit, Vercel, etc.)
+  app.set('trust proxy', 1);
+  
   // Serve uploaded files
   app.use("/attached_assets/uploads", express.static(uploadDir));
 
-  // Session middleware
+  // Session middleware with production-ready configuration
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "event-registration-secret",
       resave: false,
       saveUninitialized: false,
+      proxy: true, // Required when behind a proxy
       cookie: {
         secure: process.env.NODE_ENV === "production",
         httpOnly: true,
+        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax', // 'none' required for cross-site in production
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
     })
