@@ -35,6 +35,8 @@ export default function QRScanner({ onScan }: QRScannerProps) {
   const [error, setError] = useState<string | null>(null);
   const scannerRef = useRef<Html5Qrcode | null>(null);
   const qrCodeRegionId = "qr-code-scanner-region";
+  const lastScannedRef = useRef<string | null>(null);
+  const scanningInProgressRef = useRef<boolean>(false);
 
   useEffect(() => {
     return () => {
@@ -70,6 +72,11 @@ export default function QRScanner({ onScan }: QRScannerProps) {
             ticketId = url.searchParams.get("t") || decodedText;
           }
 
+          // Prevent duplicate scans
+          if (scanningInProgressRef.current || lastScannedRef.current === ticketId) {
+            return;
+          }
+
           // Process the scan
           await handleScan(ticketId);
         },
@@ -99,10 +106,21 @@ export default function QRScanner({ onScan }: QRScannerProps) {
 
   const handleScan = async (ticketId: string) => {
     if (onScan) {
-      const result = await Promise.resolve(onScan(ticketId));
-      if (result) {
-        setLastResult(result);
-        setScanHistory((prev) => [result, ...prev].slice(0, 10));
+      scanningInProgressRef.current = true;
+      lastScannedRef.current = ticketId;
+      
+      try {
+        const result = await Promise.resolve(onScan(ticketId));
+        if (result) {
+          setLastResult(result);
+          setScanHistory((prev) => [result, ...prev].slice(0, 10));
+        }
+      } finally {
+        // Reset scanning state after 3 seconds to allow scanning different QR codes
+        setTimeout(() => {
+          scanningInProgressRef.current = false;
+          lastScannedRef.current = null;
+        }, 3000);
       }
     }
   };

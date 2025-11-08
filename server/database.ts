@@ -350,6 +350,9 @@ export class TicketDatabase {
 
     // Check if already scanned (scans > 0)
     if (registration.scans > 0) {
+      // Record failed scan attempt in history
+      this.addScanHistory(ticketId, false);
+      
       return {
         valid: false,
         registration,
@@ -367,7 +370,7 @@ export class TicketDatabase {
 
     updateStmt.run(ticketId);
 
-    // Record scan in history
+    // Record successful scan in history
     this.addScanHistory(ticketId, true);
 
     // Get updated registration
