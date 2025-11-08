@@ -117,20 +117,39 @@ After deployment:
 - Verify database user credentials
 
 ### Session/Login Issues (COMMON IN PRODUCTION)
-- **CRITICAL**: Make sure `NODE_ENV=production` is set in your deployment environment
-- Make sure `SESSION_SECRET` is set to a strong random value
-- Ensure your deployment platform supports sessions/cookies
-- For Replit: Sessions work automatically
-- For Vercel/Netlify: You may need to use serverless-compatible session storage
-- Clear browser cookies and try again
-- Check browser console for CORS or cookie errors
+
+**CRITICAL**: You MUST set `NODE_ENV=production` for production deployments. This enables secure HTTPS cookies required for authentication.
+
+**Quick Fixes:**
+1. Set `NODE_ENV=production` in your deployment platform
+2. Set `SESSION_SECRET` to a strong random value (not the default)
+3. Clear browser cookies and try again
+4. Check server logs for errors about missing environment variables
+
+**How to verify:**
+- Check server logs on startup - you should NOT see errors about missing NODE_ENV
+- Browser DevTools → Application → Cookies should show a session cookie with Secure flag
+- Logout, save, publish, and edit functions should work without 401 errors
+
+**Platform-Specific Setup:**
+- **Replit**: Add `NODE_ENV=production` to Secrets tab
+- **Vercel**: Add to Environment Variables in project settings  
+- **Railway/Render**: Add to environment variables in dashboard
+
+**If sessions still fail after setting NODE_ENV:**
+1. Verify `SESSION_SECRET` is set and not the default value
+2. Check browser console for cookie errors
+3. Ensure cookies are enabled in your browser
+4. Check server logs for environment variable errors
 
 ### Forms Not Saving / 401 Unauthorized Errors
-- This is usually a session cookie issue in production
-- Verify `NODE_ENV=production` is set
-- Verify `SESSION_SECRET` is configured
-- Check that your hosting platform supports Express sessions
-- The app requires cookies to be enabled in the browser
+This is typically a session cookie issue. The app will show warnings on startup if critical environment variables are missing.
+
+**Fix:**
+1. Check server logs for environment variable warnings
+2. Verify `SESSION_SECRET` is configured (not the default value)
+3. Ensure cookies are enabled in your browser
+4. Clear cookies and log in again
 
 ### Email Not Sending
 - Verify Gmail App Password is correct

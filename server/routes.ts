@@ -54,13 +54,34 @@ const upload = multer({
 });
 
 export async function registerRoutes(app: Express): Promise<Server> {
+  // Validate critical environment variables
+  const requiredEnvVars = ['SESSION_SECRET', 'SITE_URL', 'NODE_ENV'];
+  const missingVars = requiredEnvVars.filter(v => !process.env[v]);
+  
+  if (missingVars.length > 0) {
+    console.error('⚠️  ERROR: Missing critical environment variables:', missingVars.join(', '));
+    console.error('⚠️  Set NODE_ENV=production for deployment!');
+    console.error('⚠️  Sessions may not work correctly without proper configuration.');
+  }
+  
+  if (process.env.SESSION_SECRET === 'event-registration-secret' || !process.env.SESSION_SECRET) {
+    console.error('⚠️  ERROR: Using default SESSION_SECRET. Generate a secure secret for production!');
+  }
+  
+  const isProduction = process.env.NODE_ENV === 'production';
+  
+  if (!isProduction && process.env.SITE_URL?.startsWith('https://')) {
+    console.warn('⚠️  WARNING: HTTPS detected but NODE_ENV is not "production". Set NODE_ENV=production for proper cookie handling.');
+  }
+  
   // Trust proxy - required for secure cookies behind reverse proxies (Replit, Vercel, etc.)
   app.set('trust proxy', 1);
   
   // Serve uploaded files
   app.use("/attached_assets/uploads", express.static(uploadDir));
 
-  // Session middleware with production-ready configuration
+  // Session middleware with production-safe configuration
+  // Note: sameSite='none' requires secure=true, so both must be enabled for production
   app.use(
     session({
       secret: process.env.SESSION_SECRET || "event-registration-secret",
@@ -68,9 +89,9 @@ export async function registerRoutes(app: Express): Promise<Server> {
       saveUninitialized: false,
       proxy: true, // Required when behind a proxy
       cookie: {
-        secure: process.env.NODE_ENV === "production",
+        secure: isProduction, // Must be true in production for sameSite='none' to work
         httpOnly: true,
-        sameSite: process.env.NODE_ENV === "production" ? 'none' : 'lax', // 'none' required for cross-site in production
+        sameSite: isProduction ? 'none' : 'lax', // 'none' required for cross-site HTTPS in production
         maxAge: 24 * 60 * 60 * 1000, // 24 hours
       },
     })
