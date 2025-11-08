@@ -131,6 +131,7 @@ export interface EventForm {
     phone?: BaseFieldConfig;
     organization?: BaseFieldConfig;
     groupSize?: BaseFieldConfig;
+    teamMembers?: BaseFieldConfig;
   };
   successMessage: string | null;
   successTitle: string | null;

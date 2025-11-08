@@ -156,7 +156,7 @@ export default function RegistrationForm({ publishedForm }: RegistrationFormProp
     defaultValues,
   });
 
-  const maxTeamMembers = publishedForm?.baseFields?.groupSize?.maxTeamMembers || 4;
+  const maxTeamMembers = publishedForm?.baseFields?.teamMembers?.maxTeamMembers || 4;
   const [selectedMemberCount, setSelectedMemberCount] = useState(1);
 
   const { fields: teamMemberFields, append: appendTeamMember, remove: removeTeamMember } = useFieldArray({

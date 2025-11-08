@@ -43,6 +43,7 @@ const formBuilderSchema = z.object({
     phone: baseFieldConfigSchema.optional(),
     organization: baseFieldConfigSchema.optional(),
     groupSize: baseFieldConfigSchema.optional(),
+    teamMembers: baseFieldConfigSchema.optional(),
   }).optional(),
   successMessage: z.string().optional(),
   successTitle: z.string().optional(),
