@@ -1,15 +1,40 @@
-
+import nodemailer from "nodemailer";
 import type { Registration } from "@shared/schema";
 
-const BREVO_API_KEY = process.env.BREVO_API_KEY || "";
+// SMTP Configuration for Render or any platform
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
+const SMTP_SECURE = process.env.SMTP_SECURE === "true"; // true for 465, false for other ports
+const SMTP_USER = process.env.SMTP_USER || "";
+const SMTP_PASS = process.env.SMTP_PASS || "";
 const EMAIL_FROM = process.env.EMAIL_FROM || "noreply@event.com";
 const EMAIL_FROM_NAME = process.env.EMAIL_FROM_NAME || "Event Registration";
 const SITE_URL = process.env.SITE_URL || "http://localhost:5000";
 
+// Create reusable transporter
+const transporter = nodemailer.createTransport({
+  host: SMTP_HOST,
+  port: SMTP_PORT,
+  secure: SMTP_SECURE,
+  auth: SMTP_USER && SMTP_PASS ? {
+    user: SMTP_USER,
+    pass: SMTP_PASS,
+  } : undefined,
+  // For development without auth
+  ...((!SMTP_USER || !SMTP_PASS) && {
+    tls: {
+      rejectUnauthorized: false
+    }
+  })
+});
+
 // Log configuration on startup
 console.log("📧 Email Service Configuration:");
-console.log("- Service: Brevo (Sendinblue)");
-console.log("- API Key:", BREVO_API_KEY ? "✅ SET (" + BREVO_API_KEY.length + " chars)" : "❌ NOT SET");
+console.log("- Service: SMTP (Nodemailer)");
+console.log("- Host:", SMTP_HOST);
+console.log("- Port:", SMTP_PORT);
+console.log("- Secure:", SMTP_SECURE);
+console.log("- Auth:", SMTP_USER ? `✅ SET (${SMTP_USER})` : "❌ NOT SET");
 console.log("- From:", `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`);
 
 export async function sendQRCodeEmail(
@@ -17,35 +42,28 @@ export async function sendQRCodeEmail(
   qrCodeDataUrl: string,
   verificationUrl: string
 ): Promise<boolean> {
-  if (!BREVO_API_KEY) {
-    console.error("❌ Brevo API key not configured. Skipping email send.");
-    console.error("BREVO_API_KEY:", BREVO_API_KEY ? "SET" : "NOT SET");
-    return false;
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.warn("⚠️  SMTP credentials not configured. Email will be attempted but may fail.");
+    console.warn("Set SMTP_USER and SMTP_PASS environment variables for production use.");
   }
 
   console.log("📧 Attempting to send email to:", registration.email);
   console.log("Using email config:", {
     from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
-    service: "Brevo"
+    host: SMTP_HOST,
+    port: SMTP_PORT
   });
 
   try {
-    // Convert data URL to base64
+    // Convert data URL to buffer for attachment
     const base64Data = qrCodeDataUrl.replace(/^data:image\/png;base64,/, "");
+    const qrCodeBuffer = Buffer.from(base64Data, "base64");
 
-    const emailPayload = {
-      sender: {
-        name: EMAIL_FROM_NAME,
-        email: EMAIL_FROM
-      },
-      to: [
-        {
-          email: registration.email,
-          name: registration.name
-        }
-      ],
+    const mailOptions = {
+      from: `${EMAIL_FROM_NAME} <${EMAIL_FROM}>`,
+      to: `${registration.name} <${registration.email}>`,
       subject: `Your Event QR Code - ${registration.id}`,
-      htmlContent: `
+      html: `
         <!DOCTYPE html>
         <html>
         <head>
@@ -132,7 +150,7 @@ export async function sendQRCodeEmail(
               
               <div class="qr-code">
                 <h3>Your QR Code</h3>
-                <img src="${qrCodeDataUrl}" alt="QR Code" />
+                <img src="cid:qrcode" alt="QR Code" />
                 <p style="color: #666; font-size: 14px;">
                   📥 Download the attached QR code image or show it on your phone at the event
                 </p>
@@ -159,33 +177,18 @@ export async function sendQRCodeEmail(
         </body>
         </html>
       `,
-      attachment: [
+      attachments: [
         {
-          content: base64Data,
-          name: `QR-Code-${registration.id}.png`,
+          filename: `QR-Code-${registration.id}.png`,
+          content: qrCodeBuffer,
+          cid: "qrcode" // Content ID for embedding in HTML
         }
       ]
     };
 
-    const response = await fetch("https://api.brevo.com/v3/smtp/email", {
-      method: "POST",
-      headers: {
-        "accept": "application/json",
-        "api-key": BREVO_API_KEY,
-        "content-type": "application/json"
-      },
-      body: JSON.stringify(emailPayload)
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("❌ Brevo API error:", errorData);
-      return false;
-    }
-
-    const result = await response.json();
+    const info = await transporter.sendMail(mailOptions);
     console.log(`✅ QR code email sent successfully to ${registration.email}`);
-    console.log("Message ID:", result.messageId);
+    console.log("Message ID:", info.messageId);
     return true;
   } catch (error: any) {
     console.error("❌ Error sending QR code email:");
@@ -197,34 +200,18 @@ export async function sendQRCodeEmail(
 
 // Test email configuration
 export async function testEmailConnection(): Promise<boolean> {
-  if (!BREVO_API_KEY) {
-    console.error("❌ Brevo API key not configured");
+  if (!SMTP_USER || !SMTP_PASS) {
+    console.warn("⚠️  SMTP credentials not configured");
     return false;
   }
 
   try {
-    // Test the API key by making a simple account request
-    const response = await fetch("https://api.brevo.com/v3/account", {
-      method: "GET",
-      headers: {
-        "accept": "application/json",
-        "api-key": BREVO_API_KEY
-      }
-    });
-
-    if (!response.ok) {
-      const errorData = await response.json();
-      console.error("❌ Brevo connection failed:", errorData);
-      return false;
-    }
-
-    const accountData = await response.json();
-    console.log("✅ Brevo connection verified successfully");
-    console.log("Account email:", accountData.email);
-    console.log("Plan type:", accountData.plan?.type || "Unknown");
+    await transporter.verify();
+    console.log("✅ SMTP connection verified successfully");
+    console.log(`Connected to ${SMTP_HOST}:${SMTP_PORT}`);
     return true;
   } catch (error: any) {
-    console.error("❌ Brevo connection failed:");
+    console.error("❌ SMTP connection failed:");
     console.error("Error:", error.message);
     return false;
   }
@@ -232,5 +219,5 @@ export async function testEmailConnection(): Promise<boolean> {
 
 // Verify email configuration
 export function isEmailConfigured(): boolean {
-  return !!BREVO_API_KEY;
+  return !!(SMTP_USER && SMTP_PASS);
 }

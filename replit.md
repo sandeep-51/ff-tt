@@ -2,7 +2,7 @@
 
 ## Overview
 
-This is a QR-based event registration and entry management system built with React, Express, and MongoDB. The system allows attendees to register for events through a public form, receive QR codes via email (sent through Brevo), and enables administrators to manage registrations, generate QR codes, scan entries, and track multi-entry access with a configurable maximum scan limit.
+This is a QR-based event registration and entry management system built with React, Express, and MongoDB. The system allows attendees to register for events through a public form, receive QR codes via email (sent through standard SMTP), and enables administrators to manage registrations, generate QR codes, scan entries, and track multi-entry access with a configurable maximum scan limit.
 
 ## User Preferences
 
@@ -118,7 +118,7 @@ Preferred communication style: Simple, everyday language.
 - **Database**: `mongodb` driver for MongoDB cloud database
 
 **External Services**:
-- **Brevo (Sendinblue)**: Transactional email delivery service for sending QR codes to registered attendees (free tier: 300 emails/day)
+- **SMTP Email**: Standard SMTP email delivery using Nodemailer for sending QR codes to registered attendees (works with Gmail, SendGrid, Mailgun, or any SMTP provider)
 - Google Fonts CDN for Inter and JetBrains Mono fonts
 - No cloud storage - files stored locally in `attached_assets/uploads/`
 
@@ -134,7 +134,11 @@ Preferred communication style: Simple, everyday language.
 - `SITE_URL` - Base URL for QR code generation (default: http://localhost:5000)
 - `SESSION_SECRET` - Session encryption secret (default: event-registration-secret)
 - `NODE_ENV` - Environment mode (development/production)
-- `BREVO_API_KEY` - Brevo (Sendinblue) API key for sending emails (required for email functionality)
+- `SMTP_HOST` - SMTP server hostname (default: smtp.gmail.com)
+- `SMTP_PORT` - SMTP server port (default: 587)
+- `SMTP_SECURE` - Use TLS/SSL for SMTP (default: false)
+- `SMTP_USER` - SMTP authentication username (required for email functionality)
+- `SMTP_PASS` - SMTP authentication password (required for email functionality)
 - `EMAIL_FROM` - Sender email address for outgoing emails (default: noreply@event.com)
 - `EMAIL_FROM_NAME` - Sender name for outgoing emails (default: Event Registration)
 
