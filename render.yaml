@@ -1,0 +1,9 @@
+services:
+  - type: web
+    name: event-registration-app
+    env: node
+    buildCommand: NPM_CONFIG_PRODUCTION=false npm install && npm run build
+    startCommand: npm run start
+    envVars:
+      - key: NODE_ENV
+        value: production
