@@ -2,7 +2,8 @@ import nodemailer from "nodemailer";
 import type { Registration } from "@shared/schema";
 
 // SMTP Configuration for Render or any platform
-const SMTP_HOST = process.env.SMTP_HOST || "smtp.gmail.com";
+// Defaults configured for SendGrid (recommended for production)
+const SMTP_HOST = process.env.SMTP_HOST || "smtp.sendgrid.net";
 const SMTP_PORT = parseInt(process.env.SMTP_PORT || "587");
 const SMTP_SECURE = process.env.SMTP_SECURE === "true"; // true for 465, false for other ports
 const SMTP_USER = process.env.SMTP_USER || "";
